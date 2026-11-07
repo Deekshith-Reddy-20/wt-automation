@@ -390,12 +390,17 @@ describe('WhatsApp bot — information flows', () => {
     expect(text(res.replies)).toMatch(/10,000/)
   })
 
-  it('location hands off to staff when no address is configured', async () => {
+  it('location without an address alerts staff but keeps the bot answering', async () => {
     const chat = new Chat(makeServices())
     await chat.send('Hi')
     const res = await chat.send('', 'm_location')
     expect(text(res.replies)).not.toMatch(/https?:\/\//)
-    expect(res.handoffReason ?? 'location_not_configured').toBe('location_not_configured')
+    expect(text(res.replies)).toMatch(/share the V-Farms location/)
+    expect(res.handoff).toBe(false)
+    expect(res.events).toContainEqual(expect.objectContaining({ key: 'human_escalation', detail: { reason: 'location_not_configured' } }))
+    expect(chat.state.flow).not.toBe('human')
+    await chat.send('', 'm_event')
+    expect(chat.state.flow).toBe('event')
   })
 
   it('location shares only the configured address and map link', async () => {

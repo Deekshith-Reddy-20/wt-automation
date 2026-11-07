@@ -80,12 +80,12 @@ export async function resolveMsg91Account(db: SupabaseClient): Promise<AccountTa
  * fails the webhook answers 5xx so MSG91 redelivers.
  */
 /**
- * phone → contact + conversation ids for guests seen in the last few minutes,
+ * phone → contact + conversation ids for guests seen in the last hour,
  * so a back-and-forth conversation skips the 2–3 lookup round trips. Only ids
  * and the display name are kept: opt-out and closed status are re-checked on
  * every message (see `IngestedInbound.optOutPrefetch` and the guarded reopen).
  */
-const IDENTITY_TTL_MS = 10 * 60_000
+const IDENTITY_TTL_MS = 60 * 60_000
 const identities = new Map<string, { contact: { id: string; phone: string | null; name: string | null }; conversationId: string; expires: number }>()
 
 async function identify(accountId: string, ownerUserId: string, phone: string) {

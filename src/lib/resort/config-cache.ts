@@ -10,7 +10,11 @@
 interface Entry {
   value: Promise<unknown>
   expires: number
+  refreshing?: boolean
 }
+
+/** In an entry's last minute, a read starts a background reload and still gets the cached value at once. */
+const REFRESH_AHEAD_MS = 60_000
 
 const store = new Map<string, Entry>()
 const enabled = () => !process.env.VITEST || process.env.RESORT_CONFIG_CACHE === 'on'
@@ -20,7 +24,21 @@ export async function cached<T>(key: string, ttlMs: number, load: () => Promise<
   if (!enabled() || ttlMs <= 0) return load()
   const now = Date.now()
   const hit = store.get(key)
-  if (hit && hit.expires > now) return hit.value as Promise<T>
+  if (hit && hit.expires > now) {
+    if (!hit.refreshing && ttlMs > REFRESH_AHEAD_MS && hit.expires - now < REFRESH_AHEAD_MS) {
+      hit.refreshing = true
+      const next = load()
+      next.then(
+        () => {
+          if (store.get(key) === hit) store.set(key, { value: next, expires: Date.now() + ttlMs })
+        },
+        () => {
+          hit.refreshing = false
+        },
+      )
+    }
+    return hit.value as Promise<T>
+  }
   const value = load()
   store.set(key, { value, expires: now + ttlMs })
   value.catch(() => {
@@ -38,7 +56,10 @@ export function invalidateConfigCache(accountId?: string): void {
   for (const key of store.keys()) if (key.includes(accountId)) store.delete(key)
 }
 
-/** How long settings edits can take to reach the bot. */
-export const CONFIG_TTL_MS = 30_000
+/**
+ * Upper bound for a settings edit made outside the admin routes (which
+ * invalidate at once) to reach the bot. warmup.ts refreshes before expiry.
+ */
+export const CONFIG_TTL_MS = 5 * 60_000
 /** The MSG91 number's account mapping changes only when env changes. */
 export const ACCOUNT_TTL_MS = 5 * 60_000

@@ -2114,8 +2114,15 @@ async function showExplore(run: Run, id: string): Promise<void> {
 async function showLocation(run: Run): Promise<void> {
   const s = run.svc.settings
   if (!s.address && !s.map_url && !s.directions) {
-    run.say("Our team will share the location and directions with you here shortly.")
-    return startHandoff(run, 'location_not_configured', false)
+    run.say('📍 Our team will share the V-Farms location and directions with you here shortly.')
+    // Alert staff but keep the bot answering: a missing setting must not leave the guest talking to no one.
+    try {
+      await run.svc.handoff('location_not_configured', handoffSummary(run))
+      run.emit('human_escalation', 'success', { reason: 'location_not_configured' })
+    } catch (err) {
+      run.emit('human_escalation', 'failed', { reason: 'location_not_configured' }, err instanceof Error ? err.message : 'handoff_failed')
+    }
+    return run.go('location', 'shown')
   }
   const lines = [run.name]
   if (s.address) lines.push(s.address)

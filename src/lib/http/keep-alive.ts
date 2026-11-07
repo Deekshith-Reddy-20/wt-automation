@@ -4,10 +4,10 @@ import { Agent, setGlobalDispatcher } from 'undici'
  * Node's default fetch agent drops idle sockets after 4 s, so a customer
  * tapping a button a few seconds after the last prompt pays a fresh
  * TCP + TLS handshake to Supabase and graph.facebook.com (~50–120 ms each
- * from this region). Keeping sockets warm for 30 s covers normal tap gaps.
- * A server-sent Keep-Alive hint still wins when it is shorter.
+ * from this region). Sockets stay pooled for 5 minutes (and warmup.ts touches
+ * them every 20 s). A server-sent Keep-Alive hint still wins when it is shorter.
  */
-export const KEEP_ALIVE_TIMEOUT_MS = 30_000
+export const KEEP_ALIVE_TIMEOUT_MS = 5 * 60_000
 
 let installed = false
 

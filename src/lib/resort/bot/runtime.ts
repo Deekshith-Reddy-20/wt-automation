@@ -55,6 +55,8 @@ interface StateRow {
   history: BotState['history']
   bot_mode: 'bot' | 'human'
   handoff_at: string | null
+  handoff_reason?: string | null
+  handed_off_by?: string | null
   last_inbound_at: string | null
   last_processed_message_id: string | null
   version: number
@@ -277,18 +279,23 @@ function toGuestBooking(b: Booking): GuestBooking {
   }
 }
 
-const STATE_COLUMNS = 'id, flow, step, data, history, bot_mode, handoff_at, last_inbound_at, last_processed_message_id, version'
+const STATE_COLUMNS = 'id, flow, step, data, history, bot_mode, handoff_at, handoff_reason, handed_off_by, last_inbound_at, last_processed_message_id, version'
 
 /** How long staff must have been silent before a guest's greeting / MENU hands the chat back to the bot. */
 export const HUMAN_QUIET_MS = 30 * 60 * 1000
 
+/** Handoffs a person on the team made (took over, or replied); every other handoff was started by the bot. */
+const STAFF_HANDOFF_REASONS = new Set(['staff_takeover', 'agent_replied'])
+
 /**
- * Human mode ends on its own when the guest starts over (greeting or MENU)
- * and no one on the team has replied for HUMAN_QUIET_MS. `handoff_at` is
- * refreshed on every staff reply, so an active staff conversation is never
- * interrupted. Returns the fresh bot-mode row, or null to stay silent.
+ * Human mode ends when the guest starts over (greeting or MENU). If the bot
+ * handed off (guest asked for a person, missing setting, …) that happens at
+ * once, so the guest is never stuck talking to no one. If staff took over or
+ * replied, it waits until they have been quiet for HUMAN_QUIET_MS
+ * (`handoff_at` is refreshed on every staff reply), so an active staff
+ * conversation is never interrupted. Returns the fresh bot-mode row, or null to stay silent.
  */
-async function resumeQuietHandoff(
+export async function resumeQuietHandoff(
   db: SupabaseClient,
   row: StateRow,
   input: BotInput,
@@ -296,7 +303,8 @@ async function resumeQuietHandoff(
 ): Promise<StateRow | null> {
   if (!asksForMenu(input)) return null
   const handoffAt = row.handoff_at ? Date.parse(row.handoff_at) : NaN
-  if (Number.isFinite(handoffAt) && now.getTime() - handoffAt < HUMAN_QUIET_MS) return null
+  const staffHandoff = Boolean(row.handed_off_by) || STAFF_HANDOFF_REASONS.has(row.handoff_reason ?? 'staff_takeover')
+  if (staffHandoff && Number.isFinite(handoffAt) && now.getTime() - handoffAt < HUMAN_QUIET_MS) return null
   const { data, error } = await db
     .from('conversation_states')
     .update({
