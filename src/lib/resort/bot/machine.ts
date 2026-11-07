@@ -331,7 +331,8 @@ export async function handleInbound(svc: BotServices, prev: BotState, input: Bot
     else await prompt(run)
   } else if (cmd === 'human') {
     await startHandoff(run, 'guest_requested')
-  } else if (cmd === 'menu') {
+  } else if (cmd === 'menu' || isGreeting(input)) {
+    // "Hi" / "MENU" always starts the chat over from the welcome menu, whatever step the guest was on.
     await run.menu()
   } else if (cmd === 'cancel') {
     await run.menu(run.state.flow === 'menu' ? undefined : 'Okay, I have stopped that. Nothing was booked.')

@@ -450,17 +450,15 @@ describe('Stay Booking Enquiry — commands', () => {
     expect({ ...chat.state.data, retries: undefined }).toEqual({ ...before, retries: undefined })
   })
 
-  it('a greeting mid-flow offers to continue instead of re-sending the welcome menu', async () => {
+  it.each(['Hi', 'hello', 'MENU', 'menu'])('"%s" mid-flow starts the chat over from the welcome menu', async (word) => {
     const chat = new Chat(makeServices())
     await chat.send('BOOK')
     await chat.send('', 'bk_start')
     await chat.send('Priya Sharma')
-    const res = await chat.send('Hi')
-    expect(chat.at).toBe('menu.resume')
-    expect(res.events.some((e) => e.key === 'welcome_menu')).toBe(false)
-    await chat.send('', 'r_continue')
-    expect(chat.at).toBe('booking.check_in')
-    expect(chat.state.data.name).toBe('Priya Sharma')
+    const res = await chat.send(word)
+    expect(chat.at).toBe('menu.start')
+    expect(res.events.some((e) => e.key === 'welcome_menu')).toBe(true)
+    expect(chat.state.data.name).toBeUndefined()
   })
 
   it('an image mid-flow re-asks the current question', async () => {
