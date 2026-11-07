@@ -1,0 +1,15 @@
+# Overrides for the shared "websites" host (46.225.59.181). The public
+# website there already uses compose project "vfarms" and image
+# "vfarms-app:local", so this app runs as project "vfarms-automation"
+# (see deploy.sh) and joins the existing nginx's network under its own alias.
+services:
+  app:
+    image: vfarms-automation-app
+    networks:
+      default:
+      cueai_edge:
+        aliases: [vfarms-crm-app]
+
+networks:
+  cueai_edge:
+    external: true
