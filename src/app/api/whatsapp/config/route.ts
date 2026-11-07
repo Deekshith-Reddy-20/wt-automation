@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
+import { getSupabaseServiceConfig } from '@/lib/supabase/service-env'
 import {
   ForbiddenError,
   UnauthorizedError,
@@ -33,6 +34,7 @@ import { resolveVerifyTokenForSave } from '@/lib/whatsapp/verify-token'
 import { invalidateWhatsAppConfigCache } from '@/lib/whatsapp/config-cache'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
+import { msg91Configured } from '@/lib/msg91/env'
 
 const t = getT('Api')
 
@@ -67,10 +69,8 @@ async function resolveAccountId(
 let _adminClient: any = null
 function supabaseAdmin() {
   if (!_adminClient) {
-    _adminClient = createAdminClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const { url, serviceRoleKey } = getSupabaseServiceConfig()
+    _adminClient = createAdminClient(url, serviceRoleKey)
   }
   return _adminClient
 }
@@ -129,6 +129,18 @@ export async function GET() {
           connected: false,
           reason: 'no_account',
           message: t('common.profileNotLinked'),
+        },
+        { status: 200 },
+      )
+    }
+
+    // Messages go through MSG91, so a stale Meta row must not mark WhatsApp as disconnected.
+    if (msg91Configured()) {
+      return NextResponse.json(
+        {
+          connected: true,
+          provider: 'msg91',
+          integrated_number: process.env.MSG91_INTEGRATED_NUMBER?.trim() ?? null,
         },
         { status: 200 },
       )

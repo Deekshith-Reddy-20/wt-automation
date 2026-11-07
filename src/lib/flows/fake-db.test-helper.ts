@@ -63,6 +63,18 @@ export function createFakeDb(tables: FakeTables) {
       },
       not: (column: string, operator: string, value: unknown) => {
         if (operator === "is") filters.push((r) => (readColumn(r, column) ?? null) !== value);
+        if (operator === "in") {
+          const list = String(value).replace(/^\(|\)$/g, "").split(",").map((s) => s.trim());
+          filters.push((r) => !list.includes(String(readColumn(r, column))));
+        }
+        return builder;
+      },
+      gt: (column: string, value: unknown) => {
+        filters.push((r) => { const v = readColumn(r, column); return v !== null && v !== undefined && String(v) > String(value); });
+        return builder;
+      },
+      lt: (column: string, value: unknown) => {
+        filters.push((r) => { const v = readColumn(r, column); return v !== null && v !== undefined && (typeof v === "number" ? v < Number(value) : String(v) < String(value)); });
         return builder;
       },
       in: (column: string, values: unknown[]) => {

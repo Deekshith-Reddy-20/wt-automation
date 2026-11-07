@@ -7,8 +7,8 @@ import { FakeDb } from '@/lib/whatsapp/latency-bench/fake-supabase'
 // ============================================================
 // Builder "Test flow" tap latency (MOCKED).
 //
-// Runs the real POST /api/flows/[id]/test route and the real Suraj Solar
-// lead flow against the in-memory Supabase that charges one simulated
+// Runs the real POST /api/flows/[id]/test route and the sample
+// lead-qualification flow fixture against the in-memory Supabase that charges one simulated
 // round trip per query. Meta sends are simulated by the route itself, so
 // nothing leaves the process. requireRole is modelled as its two round
 // trips (auth.getUser + profiles). The Next.js proxy, browser and
@@ -61,7 +61,7 @@ import {
   WELCOME_TEXT,
   buildLeadFlow,
   languageReplyId,
-} from '@/lib/suraj-solar/lead-flow'
+} from '@/lib/flows/__fixtures__/sample-lead-flow'
 
 function prng(seed: number) {
   return () => {

@@ -4,10 +4,9 @@
 //   node scripts/smoke-test.mjs            (base URL defaults to http://localhost:3000)
 //   SMOKE_BASE_URL=http://localhost:3001 node scripts/smoke-test.mjs
 //   Docker: SMOKE_BASE_URL=http://localhost:3002 SMOKE_APP_SUPABASE_URL=http://host.docker.internal:54321
-//   Seeded-account checks: SMOKE_SOLAR_EMAIL=… SMOKE_SOLAR_PASSWORD=…
 //
 // Reads Supabase + secrets from .env.local. Provisions throwaway users
-// (*@smoke.surajsolar.test), signs in, and exercises auth, RBAC, RLS,
+// (*@smoke.vfarms.test), signs in, and exercises auth, RBAC, RLS,
 // API keys, cron auth, and the Meta webhook (signature, verify handshake,
 // inbound message, idempotent replay). Never calls Meta: the WhatsApp
 // config it seeds holds a fake token and every inbound payload is
@@ -127,9 +126,9 @@ async function accountOf(userId) {
 async function main() {
   console.log(`Smoke test → app ${BASE}, supabase ${SB_URL}\n`)
   const PW = 'Smoke-Test-Pw-2026!'
-  const OWNER = 'owner@smoke.surajsolar.test'
-  const VIEWER = 'viewer@smoke.surajsolar.test'
-  const OUTSIDER = 'outsider@smoke.surajsolar.test'
+  const OWNER = 'owner@smoke.vfarms.test'
+  const VIEWER = 'viewer@smoke.vfarms.test'
+  const OUTSIDER = 'outsider@smoke.vfarms.test'
 
   // ---------- Unauthenticated surface ----------
   await check('auth page /login renders', async () => expectStatus(await http('/login'), 200))
@@ -297,8 +296,8 @@ async function main() {
     entry: [{ id: 'SMOKE_WABA', changes: [{ field: 'messages', value: {
       messaging_product: 'whatsapp',
       metadata: { display_phone_number: '15550000000', phone_number_id: pnid },
-      contacts: [{ profile: { name: 'Smoke Solar Lead' }, wa_id: from }],
-      messages: [{ id: wamid, from, timestamp: String(Math.floor(Date.now() / 1000)), type: 'text', text: { body: 'Hi, I want rooftop solar for my home. Bill is 4000/month' } }],
+      contacts: [{ profile: { name: 'Smoke Guest' }, wa_id: from }],
+      messages: [{ id: wamid, from, timestamp: String(Math.floor(Date.now() / 1000)), type: 'text', text: { body: 'Hi, is the farm stay available next weekend for 6 guests?' } }],
     } }] }],
   })
   const countMessages = async () => {
@@ -336,67 +335,6 @@ async function main() {
     return expectStatus(r, 200)
   })
 
-  // ---------- Suraj Solar seed (scripts/seed-suraj-solar.mjs) ----------
-  // Opt-in: SMOKE_SOLAR_EMAIL / SMOKE_SOLAR_PASSWORD of an account that was seeded.
-  if (env.SMOKE_SOLAR_EMAIL && env.SMOKE_SOLAR_PASSWORD) {
-    let solarCookie, solarAccount, automations = []
-    await check('Suraj Solar admin login', async () => {
-      solarCookie = await sessionCookie(env.SMOKE_SOLAR_EMAIL, env.SMOKE_SOLAR_PASSWORD)
-      const { data: list } = await admin.auth.admin.listUsers({ perPage: 1000 })
-      solarAccount = (await accountOf(list.users.find((u) => u.email === env.SMOKE_SOLAR_EMAIL).id)).account_id
-    })
-    await check('seeded catalogue present (fields, tags, pipeline, 9 inactive automations)', async () => {
-      const [{ count: fields }, { count: tags }, { data: pipe }, { data: autos }] = await Promise.all([
-        admin.from('custom_fields').select('id', { count: 'exact', head: true }).eq('account_id', solarAccount),
-        admin.from('tags').select('id', { count: 'exact', head: true }).eq('account_id', solarAccount),
-        admin.from('pipelines').select('id, pipeline_stages(name, position)').eq('account_id', solarAccount).eq('name', 'Solar Sales').single(),
-        admin.from('automations').select('id, name, is_active').eq('account_id', solarAccount).like('name', 'Suraj Solar ·%'),
-      ])
-      automations = autos ?? []
-      const stages = pipe.pipeline_stages.sort((a, b) => a.position - b.position).map((s) => s.name).join(' → ')
-      if (stages !== 'New Lead → Contacted → Qualified → Site Survey → Quotation Sent → Negotiation → Won → Lost') throw new Error(stages)
-      if (automations.length !== 9) throw new Error(`${automations.length} automations`)
-      if (automations.some((a) => a.is_active)) throw new Error('an automation is active')
-      return `${fields} fields, ${tags} tags, ${stages}`
-    })
-    for (const a of automations) {
-      await check(`activation validator accepts "${a.name}"`, async () => {
-        const on = await http(`/api/automations/${a.id}`, { method: 'PATCH', cookie: solarCookie, body: JSON.stringify({ is_active: true }) })
-        const off = await http(`/api/automations/${a.id}`, { method: 'PATCH', cookie: solarCookie, body: JSON.stringify({ is_active: false }) })
-        if (on.status !== 200) throw new Error(`activate HTTP ${on.status}: ${await on.text()}`)
-        return expectStatus(off, 200)
-      })
-    }
-    await check('engine: "Hot Lead" tag → priority High + round-robin assignment (no Meta calls)', async () => {
-      const auto = automations.find((a) => a.name.endsWith('Sales agent assignment'))
-      const { data: hot } = await admin.from('tags').select('id').eq('account_id', solarAccount).eq('name', 'Hot Lead').single()
-      const { data: prio } = await admin.from('custom_fields').select('id').eq('account_id', solarAccount).eq('field_name', 'Lead priority').single()
-      const { data: contact } = await admin.from('contacts').select('id').eq('account_id', solarAccount).eq('phone', '+915555500001').single()
-      await admin.from('contact_tags').delete().eq('contact_id', contact.id).eq('tag_id', hot.id)
-      await admin.from('conversations').update({ assigned_agent_id: null }).eq('contact_id', contact.id)
-      await admin.from('contact_custom_values').delete().eq('contact_id', contact.id).eq('custom_field_id', prio.id)
-      const since = new Date().toISOString()
-      expectStatus(await http(`/api/automations/${auto.id}`, { method: 'PATCH', cookie: solarCookie, body: '{"is_active":true}' }), 200)
-      try {
-        expectStatus(await http(`/api/contacts/${contact.id}/tags`, { method: 'POST', cookie: solarCookie, body: JSON.stringify({ tag_id: hot.id }) }), 200)
-        let log
-        await waitFor(async () => {
-          const { data } = await admin.from('automation_logs').select('status, steps_executed').eq('automation_id', auto.id).gte('created_at', since).maybeSingle()
-          log = data
-          return log && log.steps_executed.length >= 2
-        })
-        if (!log) throw new Error('no automation log written')
-        if (log.status !== 'success') throw new Error(`log status ${log.status}: ${JSON.stringify(log.steps_executed)}`)
-        const { data: conv } = await admin.from('conversations').select('assigned_agent_id').eq('contact_id', contact.id).single()
-        const { data: val } = await admin.from('contact_custom_values').select('value').eq('contact_id', contact.id).eq('custom_field_id', prio.id).maybeSingle()
-        if (!conv.assigned_agent_id) throw new Error('conversation not assigned')
-        if (val?.value !== 'High') throw new Error(`Lead priority=${val?.value}`)
-        return 'log success, assigned, priority High'
-      } finally {
-        await http(`/api/automations/${auto.id}`, { method: 'PATCH', cookie: solarCookie, body: '{"is_active":false}' })
-      }
-    })
-  }
 
   const failed = results.filter((r) => !r.ok)
   console.log(`\n${results.length - failed.length}/${results.length} checks passed`)

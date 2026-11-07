@@ -50,6 +50,7 @@ import {
 import { deleteAccountMedia } from "@/lib/storage/upload-media";
 import { TemplatePicker } from "./template-picker";
 import { AiThreadBanner } from "./ai-thread-banner";
+import { ResortBotBanner } from "./resort-bot-banner";
 import { buildReplyPreview } from "./reply-quote";
 import {
   renderTemplateBody,
@@ -1280,6 +1281,8 @@ export function MessageThread({
           }
         }}
       />
+
+      <ResortBotBanner conversationId={conversation.id} refreshKey={messages.length} />
 
       {/* Composer */}
       <MessageComposer

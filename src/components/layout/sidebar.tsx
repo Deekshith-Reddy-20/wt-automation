@@ -8,17 +8,19 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTotalUnread } from "@/hooks/use-total-unread";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import {
+  BedDouble,
   Bell,
   Bot,
+  CalendarDays,
   Crown,
   GitBranch,
   LayoutDashboard,
   LogOut,
   MessageSquare,
-  Radio,
   Settings,
   Shield,
-  Sun,
+  Sprout,
+  Trees,
   User,
   UserCog,
   Users,
@@ -87,11 +89,13 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
+  { href: "/resort", labelKey: "resort", icon: Trees },
   { href: "/inbox", labelKey: "inbox", icon: MessageSquare },
   { href: "/notifications", labelKey: "notifications", icon: Bell },
   { href: "/contacts", labelKey: "contacts", icon: Users },
   { href: "/pipelines", labelKey: "pipelines", icon: GitBranch },
-  { href: "/broadcasts", labelKey: "broadcasts", icon: Radio },
+  { href: "/resort/bookings", labelKey: "bookings", icon: BedDouble },
+  { href: "/resort/calendar", labelKey: "availabilityCalendar", icon: CalendarDays },
   { href: "/automations", labelKey: "automations", icon: Zap },
   { href: "/flows", labelKey: "flows", icon: Workflow },
   { href: "/agents", labelKey: "aiAgents", icon: Bot },
@@ -195,7 +199,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-sidebar-border px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Sun className="h-4 w-4" />
+              <Sprout className="h-4 w-4" />
             </div>
             <span className="text-sm font-semibold tracking-tight text-foreground">
               {t("title")}
@@ -215,9 +219,12 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto px-3 py-4">
           <ul className="flex flex-col gap-1">
             {navItems.map((item) => {
+              // The most specific matching item wins, so /resort/bookings doesn't also light up /resort.
+              const matches = (href: string) =>
+                pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
               const isActive =
-                pathname === item.href ||
-                (item.href !== "/dashboard" && pathname.startsWith(item.href));
+                matches(item.href) &&
+                !navItems.some((other) => other.href.length > item.href.length && other.href.startsWith(item.href) && matches(other.href));
 
               const showUnreadDot =
                 item.href === "/inbox" && totalUnread > 0 && !isActive;

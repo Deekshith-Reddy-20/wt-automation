@@ -25,12 +25,26 @@ import {
  *
  * Renders nothing on the happy path.
  */
+export type AccountAlertKind = "unlinked" | "schema" | "error";
+
+/** A missing `profiles` table is a setup problem, not a connection problem. */
+export function accountAlertKind(
+  status: "unlinked" | "error",
+  detail: string | null,
+): AccountAlertKind {
+  if (status === "unlinked") return "unlinked";
+  return detail && /PGRST205|schema cache|relation "?(public\.)?profiles"? does not exist/i.test(detail)
+    ? "schema"
+    : "error";
+}
+
 export function AccountAccessAlert() {
   const { accountStatus, accountStatusDetail, refreshProfile } = useAuth();
   const t = useTranslations("AccountAccess");
   const [retrying, setRetrying] = useState(false);
 
   if (accountStatus === "loading" || accountStatus === "ready") return null;
+  const kind = accountAlertKind(accountStatus, accountStatusDetail);
 
   const retry = async () => {
     setRetrying(true);
@@ -45,10 +59,10 @@ export function AccountAccessAlert() {
     <Alert variant="destructive" className="mb-4">
       <TriangleAlert />
       <AlertTitle>
-        {accountStatus === "unlinked" ? t("unlinkedTitle") : t("errorTitle")}
+        {t(`${kind}Title`)}
       </AlertTitle>
       <AlertDescription>
-        {accountStatus === "unlinked" ? t("unlinkedBody") : t("errorBody")}
+        {t(`${kind}Body`)}
         {accountStatusDetail ? (
           // The raw reason, so a self-hoster reading a bug report has
           // something to act on instead of just "it's broken".

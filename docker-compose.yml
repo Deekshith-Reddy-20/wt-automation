@@ -1,4 +1,8 @@
-name: wacrm
+name: vfarms
+
+# Start on a server (config lives in .env.local next to this file):
+#   docker compose --env-file .env.local up --build -d                      # app + scheduler on :3000
+#   docker compose --env-file .env.local --profile https up --build -d      # + Caddy HTTPS on :80/:443 for $DOMAIN
 
 services:
   app:
@@ -11,6 +15,7 @@ services:
         NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
         NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-}
+    image: vfarms-app
     # Runtime (server-only) secrets come from .env.local; they are
     # never baked into the image.
     env_file:
@@ -22,8 +27,9 @@ services:
     environment:
       PORT: 3000
     # Host side only — HOST_PORT=8080 publishes the app on :8080.
+    # With the https profile, set HOST_BIND=127.0.0.1 so only Caddy is public.
     ports:
-      - '${HOST_PORT:-3000}:3000'
+      - '${HOST_BIND:-0.0.0.0}:${HOST_PORT:-3000}:3000'
     restart: unless-stopped
     healthcheck:
       test:
@@ -31,9 +37,60 @@ services:
           'CMD',
           'node',
           '-e',
-          "fetch('http://localhost:3000').then((r)=>process.exit(r.ok||r.status<500?0:1)).catch(()=>process.exit(1))",
+          "fetch('http://localhost:3000/api/msg91/webhook').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
+
+  # Calls the scheduled-job endpoints every minute: resort holds, guest
+  # reminders / follow-ups, MSG91 recovery + delivery status, automation
+  # Wait steps, flow timeouts and the webhook sweep. Needs
+  # AUTOMATION_CRON_SECRET in .env.local; without it the jobs answer 503.
+  scheduler:
+    image: curlimages/curl:8.11.1
+    env_file:
+      - .env.local
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        if [ -z "$$AUTOMATION_CRON_SECRET" ]; then echo "AUTOMATION_CRON_SECRET is not set; scheduler idle"; fi
+        while true; do
+          if [ -n "$$AUTOMATION_CRON_SECRET" ]; then
+            for path in /api/resort/cron /api/automations/cron /api/flows/cron /api/whatsapp/webhook/sweep; do
+              code=$$(curl -s -o /dev/null -w '%{http_code}' --max-time 55 -H "x-cron-secret: $$AUTOMATION_CRON_SECRET" "http://app:3000$$path")
+              [ "$$code" = "200" ] || echo "$$(date -u +%FT%TZ) $$path -> $$code"
+            done
+          fi
+          sleep 60
+        done
+
+  # Optional HTTPS front door (profile "https"). Caddy gets and renews a
+  # free Let's Encrypt certificate for $DOMAIN; point the domain's DNS A
+  # record at this server and open ports 80 and 443 first.
+  caddy:
+    image: caddy:2-alpine
+    profiles: ['https']
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -7,8 +7,17 @@
 #   pwsh scripts/disposable-db/up.ps1
 #   $env:WACRM_DISPOSABLE_DB='1'; npx vitest run src/app/api/whatsapp/webhook/disposable-db.integration.test.ts
 #   pwsh scripts/disposable-db/down.ps1
+#
+# -UpTo 058 stops after that migration (e.g. to rehearse applying
+# supabase/apply/vfarms_resort_059_065.sql to a project at that state).
+# -Apply runs the given SQL files (repo-relative, in order) instead of the
+# migrations, e.g. to rehearse the full-setup bundle on a foreign schema:
+#   up.ps1 -Apply scripts/disposable-db/fixtures/foreign-resort-skeleton.sql,supabase/apply/vfarms_full_setup.sql
+
+param([string]$UpTo = '', [string[]]$Apply = @())
 
 $ErrorActionPreference = 'Stop'
+$Apply = @($Apply | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $image = 'public.ecr.aws/supabase/postgres:17.11.0.004'
 $rest = 'public.ecr.aws/supabase/postgrest:v16.4'
@@ -28,8 +37,17 @@ docker cp (Join-Path $PSScriptRoot 'storage-stub.sql') wacrm058-db:/tmp/storage-
 docker exec wacrm058-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q -f /tmp/storage-stub.sql
 if ($LASTEXITCODE -ne 0) { throw 'storage stub failed' }
 
+foreach ($rel in $Apply) {
+  $name = Split-Path $rel -Leaf
+  docker cp (Join-Path $root $rel) "wacrm058-db:/tmp/$name" | Out-Null
+  docker exec wacrm058-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -f "/tmp/$name"
+  if ($LASTEXITCODE -ne 0) { throw "$rel failed" }
+}
+
 docker cp (Join-Path $root 'supabase\migrations') wacrm058-db:/tmp/migrations | Out-Null
 foreach ($f in Get-ChildItem (Join-Path $root 'supabase\migrations\*.sql') | Sort-Object Name) {
+  if ($Apply.Count) { break }
+  if ($UpTo -and $f.Name.Substring(0, 3) -gt $UpTo) { continue }
   docker exec wacrm058-db psql -U postgres -d postgres -v ON_ERROR_STOP=1 --single-transaction -q -f "/tmp/migrations/$($f.Name)"
   if ($LASTEXITCODE -ne 0) { throw "migration $($f.Name) failed" }
 }

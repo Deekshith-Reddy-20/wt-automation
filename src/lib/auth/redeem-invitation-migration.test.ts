@@ -90,16 +90,37 @@ describe("never-expiring invitations (migration 057)", () => {
     expect(peek).toMatch(/'reason',\s*'used'/);
   });
 
-  it("redeem is otherwise identical to migration 047", () => {
-    const m047 = migrations.find(({ name }) => name.startsWith("047_"))!.sql;
-    const start = m047.search(/create\s+or\s+replace\s+function\s+public\.redeem_invitation\s*\(/i);
-    const bodyStart = m047.indexOf("$$", start);
-    const previous = m047.slice(bodyStart + 2, m047.indexOf("$$", bodyStart + 2));
+  it("redeem in 057 is otherwise identical to migration 047", () => {
     const normalize = (s: string) =>
       s.replace(/v_inv\.expires_at\s+is\s+not\s+null\s+and\s+/i, "").replace(/\s+/g, " ").trim();
-    expect(normalize(redeem)).toBe(normalize(previous));
+    expect(normalize(functionBodyIn("057_", "redeem_invitation"))).toBe(normalize(functionBodyIn("047_", "redeem_invitation")));
   });
 });
+
+describe("resort tables guard (migration 062)", () => {
+  it("only adds UNION ALL data checks to the 057 version", () => {
+    const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+    const resortChecks = /\s*union\s+all\s+select\s+1\s+from\s+(property_settings|property_media|amenities|property_faqs|pricing_rules|seasonal_rates|event_packages|addons|leads|lead_notes|conversation_states|bookings|booking_guests|booking_quotes|event_requests|availability_blocks|payments|refunds|notification_jobs|audit_logs|webhook_events|consent_records)\s+where\s+account_id\s*=\s*v_old_account_id/gi;
+    const m062 = functionBodyIn("062_", "redeem_invitation");
+    expect(normalize(m062.replace(resortChecks, ""))).toBe(normalize(functionBodyIn("057_", "redeem_invitation")));
+  });
+});
+
+describe("automation tables guard (migration 064)", () => {
+  it("only adds UNION ALL data checks to the 062 version", () => {
+    const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+    const newChecks = /\s*union\s+all\s+select\s+1\s+from\s+(resort_automations|resort_automation_runs|booking_feedback|booking_change_requests|legacy_archive)\s+where\s+account_id\s*=\s*v_old_account_id/gi;
+    const m064 = functionBodyIn("064_", "redeem_invitation");
+    expect(normalize(m064.replace(newChecks, ""))).toBe(normalize(functionBodyIn("062_", "redeem_invitation")));
+  });
+});
+
+function functionBodyIn(prefix: string, functionName: string): string {
+  const sql = migrations.find(({ name }) => name.startsWith(prefix))!.sql;
+  const start = sql.search(new RegExp(`create\\s+or\\s+replace\\s+function\\s+public\\.${functionName}\\s*\\(`, "i"));
+  const bodyStart = sql.indexOf("$$", start);
+  return sql.slice(bodyStart + 2, sql.indexOf("$$", bodyStart + 2));
+}
 
 describe("member RPC migrations", () => {
   it.each(["set_member_role", "remove_account_member", "transfer_account_ownership"])(

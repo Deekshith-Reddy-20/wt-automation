@@ -19,7 +19,7 @@ Stateless app tier; all state in Supabase. One process serves UI, REST API, publ
 | Item | Status |
 |---|---|
 | Production Supabase project, migrations applied, auth URLs set (`SUPABASE_SETUP.md`) | ☐ |
-| Domain, e.g. `crm.surajsolar.com`, DNS pointing at the host | ☐ |
+| Domain, e.g. `crm.vfarms.example`, DNS pointing at the host | ☐ |
 | **HTTPS** with a valid certificate (Meta refuses non-HTTPS webhooks; self-signed rejected) | ☐ |
 | Env vars set in the host's secret store (`ENV_CONFIGURATION.md`) | ☐ |
 | Meta app + system-user token + webhook (`META_WHATSAPP_SETUP.md`) | ☐ |
@@ -64,8 +64,8 @@ Build-time args: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
 Nothing inside the app schedules itself. Call both endpoints **every minute** with the secret:
 
 ```bash
-curl -fsS -H "x-cron-secret: $AUTOMATION_CRON_SECRET" https://crm.surajsolar.com/api/automations/cron
-curl -fsS -H "x-cron-secret: $AUTOMATION_CRON_SECRET" https://crm.surajsolar.com/api/flows/cron
+curl -fsS -H "x-cron-secret: $AUTOMATION_CRON_SECRET" https://crm.vfarms.example/api/automations/cron
+curl -fsS -H "x-cron-secret: $AUTOMATION_CRON_SECRET" https://crm.vfarms.example/api/flows/cron
 ```
 
 Use host cron, a platform scheduler, GitHub Actions `schedule`, or an uptime pinger that supports
@@ -119,7 +119,7 @@ columns, `notifications`.
 1. `npm ci && npm run lint && npm run typecheck && npm test && npm run build`
 2. `npx supabase db push` against **staging** first (new migrations only; non-destructive).
 3. Deploy app to staging → `SMOKE_ALLOW_REMOTE=1 SMOKE_BASE_URL=https://staging… node scripts/smoke-test.mjs`
-   (creates `*@smoke.surajsolar.test` users — use only on staging).
+   (creates `*@smoke.vfarms.test` users — use only on staging).
 4. Repeat 2–3 for production (skip the smoke script there; do the manual go-live checks).
 5. Pulling upstream fixes: `git remote add upstream https://github.com/ArnasDon/wacrm.git`,
    `git fetch upstream && git merge upstream/main` on a branch, re-run step 1.

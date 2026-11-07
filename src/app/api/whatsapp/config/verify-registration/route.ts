@@ -15,6 +15,8 @@ import { getWebhookHealth } from '@/lib/whatsapp/webhook-health'
 import { deriveIntegrationHealth } from '@/lib/whatsapp/integration-health'
 import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rate-limit'
 import { getT } from '@/lib/i18n/translate'
+import { msg91Configured } from '@/lib/msg91/env'
+import { getMsg91WebhookHealth } from '@/lib/msg91/webhook-health'
 
 const t = getT('Api')
 
@@ -69,6 +71,29 @@ export async function GET() {
       live: false,
       checks: { config_exists: false },
       message: t('common.profileNotLinked'),
+    })
+  }
+
+  // Messages go through MSG91 here, so the Meta token / app-secret checks don't apply.
+  if (msg91Configured()) {
+    const activity = await loadMessagingActivity(supabase, accountId)
+    const webhook = getMsg91WebhookHealth()
+    const health =
+      webhook.last_post?.outcome === 'unauthorized'
+        ? { state: 'webhook_delivery_failed' as const, reasons: ['msg91_webhook_secret_mismatch'] }
+        : activity.last_outbound_status === 'failed'
+          ? { state: 'message_send_failed' as const, reasons: ['last_outbound_failed'] }
+          : !webhook.last_accepted_at && !activity.last_inbound_at
+            ? { state: 'verification_pending' as const, reasons: ['no_webhook_delivery_seen'] }
+            : { state: 'connected' as const, reasons: [] }
+    return NextResponse.json({
+      provider: 'msg91',
+      integrated_number: process.env.MSG91_INTEGRATED_NUMBER?.trim() ?? null,
+      live: health.state === 'connected',
+      health,
+      errors: [],
+      webhook: isAdmin ? webhook : null,
+      activity,
     })
   }
 

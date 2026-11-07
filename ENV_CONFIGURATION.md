@@ -19,13 +19,17 @@ example, and `.dockerignore` keeps them out of the Docker image.
 | `SUPABASE_SERVICE_ROLE_KEY` | **Yes** | Runtime, **server only** | Supabase → Project Settings → API → `service_role`. Bypasses RLS — never expose to the browser, never prefix with `NEXT_PUBLIC_`. |
 | `ENCRYPTION_KEY` | **Yes** | Runtime, server only | 64 hex chars (AES-256-GCM key for stored WhatsApp + AI credentials): `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. Use a different key per environment; rotating it forces every account to re-save WhatsApp/AI settings. |
 | `META_APP_SECRET` | **Yes** | Runtime, server only | Meta for Developers → your app → App settings → Basic → App secret. Verifies `X-Hub-Signature-256` on every webhook. Comma-separate several secrets only if your WABAs live under different Meta Apps (`docs/multi-waba.md`). Unset ⇒ webhook rejects everything (fail-closed). |
-| `NEXT_PUBLIC_SITE_URL` | Recommended | Build-time | Canonical public URL, no trailing slash, e.g. `https://crm.surajsolar.com`. Pins invite links; used by background jobs. |
+| `NEXT_PUBLIC_SITE_URL` | Recommended | Build-time | Canonical public URL, no trailing slash, e.g. `https://crm.vfarms.example`. Pins invite links; used by background jobs. |
 | `AUTOMATION_CRON_SECRET` | Required if using Wait steps / flows | Runtime | Long random string (`openssl rand -hex 32`). Sent as `x-cron-secret` to `/api/automations/cron` and `/api/flows/cron`; both return 503 while unset. |
+| `CRON_SECRET` | Required for the resort automation | Runtime | Long random string. Sent as `Authorization: Bearer …` or `x-cron-secret` to `/api/resort/cron`, which expires date holds and sends booking reminders. Falls back to `AUTOMATION_CRON_SECRET`; 503 while both are unset. |
+| `WHATSAPP_DRY_RUN` | Dev only | Runtime, server only | Exactly `true` ⇒ the V-Farms bot and booking reminders never send to Meta; replies are recorded as simulated. Unset in production (use the bot's test mode instead). |
+| `RESORT_WEBSITE_URL` | Leave unset | Runtime, server only | Base URL of a guest website serving `/booking/<ref>` and `/gallery`. This app has no such pages: while unset, the bot sends no links and booking requests go to staff confirmation instead of online payment. |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Optional | Runtime, server only | Razorpay → Settings → API Keys. Only used for refunds of Razorpay payments from the booking page. |
 | `WHATSAPP_VERIFY_TOKEN` | Optional | Runtime | Long random string. Meta webhook verification succeeds when Meta's verify token equals this **or** the token saved in *Settings → WhatsApp*. Server-only. |
 | `WHATSAPP_TEST_RECIPIENT` | Optional | Runtime, server only | A number you own, international format (e.g. `+9198…`). The only recipient *Settings → WhatsApp → Send test message* will message (Meta's `hello_world` template, after a confirm dialog). Unset ⇒ the button is disabled. For a Meta test number it must also be in the app's allowed recipient list. |
 | `META_APP_ID` | Optional | Runtime | Meta app → App settings → Basic → App ID. Only needed to submit templates with an **image header** (resumable upload). |
 | `WHATSAPP_TEMPLATES_DRY_RUN` | Dev only | Runtime | `true` ⇒ template submission is stored locally with a fake `dry-run-…` id and never sent to Meta. **Unset in production.** |
-| `ALLOWED_INVITE_HOSTS` | Optional | Runtime | Comma-separated hostnames allowed in invite links (defence in depth), e.g. `crm.surajsolar.com`. If no trusted host can be determined, the invite is refused (no fallback domain). |
+| `ALLOWED_INVITE_HOSTS` | Optional | Runtime | Comma-separated hostnames allowed in invite links (defence in depth), e.g. `crm.vfarms.example`. If no trusted host can be determined, the invite is refused (no fallback domain). |
 | `WHATSAPP_CONFIG_CACHE_TTL_MS` | Optional | Runtime | Inbound webhook WhatsApp-config cache, default `30000`; `0` disables. |
 | `WHATSAPP_INBOUND_CONTEXT_RPC` | Optional | Runtime | `0` skips the `resolve_inbound_context` function (migration 058). The code falls back automatically when it is missing. |
 | `WHATSAPP_WEBHOOK_INBOX` | Optional | Runtime | `1` stores verified webhook payloads for retry by `/api/whatsapp/webhook/sweep`. Requires migration 056. Default off. |
@@ -54,7 +58,7 @@ are read at runtime and must **not** be baked into images.
 
 | Variable | Value source |
 |---|---|
-| Supabase URL / anon / service-role | The hosted Suraj Solar Supabase project (switched from the local CLI stack). Migration 055 is **not** applied there yet. |
+| Supabase URL / anon / service-role | A hosted Supabase project (switched from the local CLI stack). Migration 055 is **not** applied there yet. |
 | `ENCRYPTION_KEY` | Freshly generated 32 random bytes |
 | `META_APP_SECRET` | Set (value not inspected). Must be the real App Secret of the Meta app that owns the webhook, or every signed POST from Meta is rejected with 401. |
 | `AUTOMATION_CRON_SECRET` | Freshly generated |
@@ -70,4 +74,4 @@ are read at runtime and must **not** be baked into images.
 | `META_APP_SECRET` | placeholder | real (test app or prod app) | real |
 | `WHATSAPP_TEMPLATES_DRY_RUN` | `true` | `true` until approved | unset |
 | `AUTOMATION_CRON_SECRET` | own | own | own |
-| `NEXT_PUBLIC_SITE_URL` | `http://localhost:3001` | staging HTTPS URL | `https://crm.surajsolar.com` (example) |
+| `NEXT_PUBLIC_SITE_URL` | `http://localhost:3001` | staging HTTPS URL | `https://crm.vfarms.example` (example) |

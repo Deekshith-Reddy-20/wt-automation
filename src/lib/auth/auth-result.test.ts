@@ -48,9 +48,9 @@ describe('classifySignInError', () => {
 
 describe('isValidEmail', () => {
   it('accepts normal addresses and rejects malformed ones', () => {
-    expect(isValidEmail(' owner@surajsolar.com ')).toBe(true)
-    expect(isValidEmail('owner@surajsolar')).toBe(false)
-    expect(isValidEmail('owner surajsolar.com')).toBe(false)
+    expect(isValidEmail(' owner@vfarms.com ')).toBe(true)
+    expect(isValidEmail('owner@vfarms')).toBe(false)
+    expect(isValidEmail('owner vfarms.com')).toBe(false)
     expect(isValidEmail('')).toBe(false)
   })
 })

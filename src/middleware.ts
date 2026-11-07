@@ -1,12 +1,61 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { getSupabasePublicConfig, isSupabaseConfigError, type SupabasePublicConfig } from '@/lib/supabase/env'
+
+// Every top-level route under src/app/(dashboard)/ belongs here —
+// middleware.test.ts reads that directory and fails on a missing one.
+export const PROTECTED_PATHS = ['/dashboard', '/resort', '/inbox', '/contacts', '/pipelines', '/broadcasts', '/automations', '/flows', '/agents', '/notifications', '/settings']
+
+function isProtectedPage(path: string) {
+  return PROTECTED_PATHS.some((p) => path.startsWith(p))
+}
+
+function isProtectedApi(path: string) {
+  return (
+    (path.startsWith('/api/whatsapp/') && !path.includes('/webhook')) ||
+    (path.startsWith('/api/msg91/') && !path.includes('/webhook')) ||
+    path.startsWith('/api/admin/')
+  )
+}
+
+function configMissingResponse(path: string, err: Error & { missing?: string[] }) {
+  // Variable names are not secret, but keep production responses generic;
+  // the full message is in the server log.
+  const detail = process.env.NODE_ENV === 'production' ? undefined : err.message
+  if (path.startsWith('/api/')) {
+    return NextResponse.json(
+      { error: 'Service unavailable: authentication is not configured.', code: 'supabase_not_configured', missing: detail ? err.missing : undefined, detail },
+      { status: 503 },
+    )
+  }
+  return new NextResponse(
+    `Service unavailable: authentication is not configured.${detail ? `\n\n${detail}` : ''}`,
+    { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } },
+  )
+}
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  let config: SupabasePublicConfig
+  try {
+    config = getSupabasePublicConfig()
+  } catch (err) {
+    if (!isSupabaseConfigError(err)) throw err
+    console.error(`[middleware] ${err.message}`)
+    // Fail closed: without Supabase nobody can be authenticated, so
+    // protected pages and APIs are refused rather than served. Other
+    // routes (login, signup, invite pages) render and show the same error
+    // when they try to use Supabase.
+    if (isProtectedPage(path) || isProtectedApi(path)) return configMissingResponse(path, err)
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    config.url,
+    config.anonKey,
     {
       cookies: {
         getAll() {
@@ -70,18 +119,15 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protected pages - redirect to login if not authenticated
-  // Every top-level route under src/app/(dashboard)/ belongs here —
-  // middleware.test.ts reads that directory and fails on a missing one.
-  const protectedPaths = ['/dashboard', '/inbox', '/contacts', '/pipelines', '/broadcasts', '/automations', '/flows', '/agents', '/notifications', '/settings']
-  if (!user && protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
+  if (!user && isProtectedPage(path)) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return withRefreshedCookies(NextResponse.redirect(url))
   }
 
-  // API routes that need auth (not webhooks)
-  if (!user && request.nextUrl.pathname.startsWith('/api/whatsapp/') &&
-      !request.nextUrl.pathname.includes('/webhook')) {
+  // API routes that need auth (not webhooks). Admin routes also verify
+  // the caller's role server-side; this is only the first gate.
+  if (!user && isProtectedApi(path)) {
     return withRefreshedCookies(
       NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     )

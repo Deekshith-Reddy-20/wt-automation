@@ -80,7 +80,7 @@
  *
  *   1. MODE   (light / dark)  → neutral surfaces. Selected with
  *      `document.documentElement.dataset.mode`. Defaults to dark.
- *   2. ACCENT (suraj / …)     → the primary color only. Selected
+ *   2. ACCENT (vfarms / …)     → the primary color only. Selected
  *      with `document.documentElement.dataset.theme`.
  *
  * The two compose: any accent works in either mode. Neutral
@@ -90,7 +90,7 @@
  * --sidebar-ring) live in the ACCENT blocks. They set disjoint
  * variables, so cascade order between them doesn't matter.
  *
- * `:root` carries the dark-mode + suraj defaults so a visitor
+ * `:root` carries the dark-mode + vfarms defaults so a visitor
  * renders correctly before JS runs; the boot script in
  * layout.tsx replays the saved mode + accent before first paint.
  *
@@ -208,11 +208,11 @@ html[data-mode="light"] {
 
 /* ---- ACCENT: primary color ---- */
 
-/* Suraj Solar brand: editorial green primary. #226129 gives white
+/* V-Farms brand: farm green primary. #226129 gives white
  * text 7.5:1 on light surfaces; on dark surfaces it is too dim for
  * text, so dark mode uses a lighter tint of the same hue. */
 :root,
-html[data-theme="suraj"] {
+html[data-theme="vfarms"] {
   --primary: oklch(0.74 0.13 148);
   --primary-foreground: oklch(0.2 0.045 148);
   --primary-hover: oklch(0.79 0.12 148);
@@ -225,7 +225,7 @@ html[data-theme="suraj"] {
   --sidebar-ring: oklch(0.74 0.13 148);
 }
 
-html[data-mode="light"][data-theme="suraj"] {
+html[data-mode="light"][data-theme="vfarms"] {
   --primary: var(--brand-editorial);
   --primary-foreground: #ffffff;
   --primary-hover: color-mix(in oklab, var(--brand-editorial) 86%, black);

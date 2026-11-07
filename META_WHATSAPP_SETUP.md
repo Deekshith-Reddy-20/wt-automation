@@ -89,14 +89,12 @@ handler acknowledges within Meta's timeout and processes in `after()`; replays o
 
 ## 5. Message templates (required for business-initiated messages)
 
-Outside the 24-hour customer-service window you may only send **approved templates**. The seed
-script created three DRAFT templates (never submitted):
-
-| Template | Category | Purpose |
-|---|---|---|
-| `solar_quotation_followup` | Marketing | Used by the *Quotation follow-up reminder* automation |
-| `solar_site_survey_reminder` | Utility | Survey appointment reminder (`{{1}}` = date/time) |
-| `solar_enquiry_reengage` | Marketing | Broadcast re-engagement with opt-out footer |
+Outside the 24-hour customer-service window you may only send **approved templates**. The V-Farms
+bot replies inside the window, so it needs none. Booking messages to confirmed guests
+(confirmation, arrival reminder, check-out reminder) use a normal message inside the window and,
+outside it, only the approved template named in **V-Farms Resort → Settings → Guest messages**.
+Without a template name the message is skipped and shown as skipped. No templates are created for
+you: write them as Utility templates in Templates, then enter their names there.
 
 To submit: unset `WHATSAPP_TEMPLATES_DRY_RUN`, open the template, review the wording, and submit.
 Status changes arrive by webhook. Meta may re-categorise templates; Marketing templates need
@@ -108,15 +106,15 @@ recipient **opt-in**.
   you first, etc.). Record the source in the *Lead source* field. Honour STOP/opt-out
   immediately (tag *Do Not Follow Up*; remove from broadcast audiences).
 - **24-hour window:** free-form replies (inbox, `send_message`, buttons/lists) only within 24 h
-  of the customer's last message. The seeded follow-up automation therefore uses a template.
+  of the customer's last message. Guest booking messages outside it therefore use a template.
 - **Rate & tier limits:** new numbers start at a limited number of business-initiated
   conversations per 24 h; the tier rises with quality. The CRM throttles broadcasts and limits
   `/api/whatsapp/send` and `/broadcast` to 60 requests/min per user, but Meta's tier is the
   binding constraint — keep early broadcasts small.
 - **Quality:** watch template quality (GREEN/YELLOW/RED) in the templates list; low quality
   pauses templates and can lower your tier.
-- **Display name & content:** the display name must be approved by Meta and match Suraj Solar's
-  branding; avoid promising specific subsidy amounts in templates.
+- **Display name & content:** the display name must be approved by Meta and match V-Farms'
+  branding; never promise availability or prices in templates — only staff confirm bookings.
 
 ## 7. Go-live test plan (needs real credentials)
 
@@ -128,10 +126,11 @@ Use a Meta **test number** first, with your own phone as the only recipient.
 4. Send "Hi" from your phone → conversation appears in Inbox in real time.
 5. Reply from Inbox → received on phone; ticks progress sent → delivered → read.
 6. Send an image both ways → displays; inbound copy stored in `chat-media`.
-7. Submit `solar_site_survey_reminder` → becomes APPROVED via webhook.
-8. Activate *New WhatsApp enquiry* only → message the number from a fresh phone → buttons arrive;
-   tap *Residential* (with *Residential enquiry* active) → bill list arrives; pick a range →
-   custom field filled. Check *Automations → Logs*.
+7. Submit your arrival-reminder template → becomes APPROVED via webhook.
+8. In V-Farms Resort → Settings turn the bot on with test mode on and your phone listed as a
+   test number → send "Hi" → the menu arrives; ask for dates → availability and quote arrive;
+   request the booking → it appears under V-Farms Resort → Bookings as *Booking requested*.
+   Reply HUMAN → the conversation switches to human mode and staff are alerted.
 9. Broadcast the approved template to a 1–2 person tag audience → delivery/read counts update.
 10. Only then add teammates and enable more automations.
 

@@ -74,7 +74,7 @@ import {
   WELCOME_TEXT,
   buildLeadFlow,
   languageReplyId,
-} from '@/lib/suraj-solar/lead-flow'
+} from '@/lib/flows/__fixtures__/sample-lead-flow'
 import { POST } from './route'
 import { GET as SWEEP } from './sweep/route'
 import { onLatencyTrace, summarizeLatency, type LatencySummary } from '@/lib/whatsapp/latency-trace'
@@ -167,8 +167,8 @@ async function fakeFetch(url: string | URL, init?: RequestInit): Promise<Respons
 const ACCOUNT = 'acc-bench'
 const PHONE_NUMBER_ID = 'pn-bench'
 
-// The real Suraj Solar qualification flow, exactly as the seed script builds
-// it — including the New Enquiry / Hot Lead tag nodes.
+// The sample lead-qualification flow fixture (src/lib/flows/__fixtures__),
+// including the New Enquiry / Hot Lead tag nodes.
 const TAG_IDS = {
   [LEAD_FLOW_TAGS.newEnquiry]: '00000000-0000-4000-9000-000000000001',
   [LEAD_FLOW_TAGS.hot]: '00000000-0000-4000-9000-000000000002',

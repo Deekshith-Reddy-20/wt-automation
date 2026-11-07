@@ -130,7 +130,9 @@ export function SettingsOverview({
       ]);
       if (cancelled) return;
       setWhatsapp({
-        configured: row.status === 'fulfilled' && !!row.value.data?.phone_number_id,
+        configured:
+          (row.status === 'fulfilled' && !!row.value.data?.phone_number_id) ||
+          (health.status === 'fulfilled' && health.value?.provider === 'msg91'),
         connected: health.status === 'fulfilled' && !!health.value?.connected,
       });
       setWhatsappLoading(false);

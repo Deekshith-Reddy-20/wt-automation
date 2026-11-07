@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import type { Notification } from "@/types";
-import { Bell, CheckCheck, Loader2, UserPlus } from "lucide-react";
+import { Bell, CheckCheck, Loader2, Trees, UserPlus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 
-// Icon per notification type. Only one type exists today
-// (conversation_assigned) but this keeps future types a one-line add.
+// Icon per notification type.
 const TYPE_ICON: Record<Notification["type"], typeof Bell> = {
   conversation_assigned: UserPlus,
+  resort_alert: Trees,
 };
 
 export default function NotificationsPage() {
@@ -116,7 +116,9 @@ export default function NotificationsPage() {
   const handleClick = useCallback(
     (n: Notification) => {
       if (!n.read_at) markRead(n.id);
-      if (n.conversation_id) {
+      if (n.link_path && n.link_path.startsWith("/") && !n.link_path.startsWith("//")) {
+        router.push(n.link_path);
+      } else if (n.conversation_id) {
         router.push(`/inbox?c=${n.conversation_id}`);
       }
     },

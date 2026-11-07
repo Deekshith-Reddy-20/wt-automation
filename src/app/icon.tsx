@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-// Suraj Solar brand mark — amber rounded square + white sun glyph —
+// V-Farms brand mark — farm-green rounded square + white sprout glyph —
 // matching the sidebar logo in `src/components/layout/sidebar.tsx`.
 // Next.js renders this at build time and auto-injects <link rel="icon">.
 
@@ -18,7 +18,7 @@ export default function Icon() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          background: "#f59e0b", // amber — mirrors the default "amber" theme's --primary
+          background: "#226129", // mirrors --brand-editorial in globals.css
           borderRadius: 6,
         }}
       >
@@ -32,8 +32,9 @@ export default function Icon() {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          <path d="M14 9.536V7a4 4 0 0 1 4-4h1.5a.5.5 0 0 1 .5.5V5a4 4 0 0 1-4 4 4 4 0 0 0-4 4c0 2 1 3 1 5a5 5 0 0 1-1 3" />
+          <path d="M4 9a5 5 0 0 1 8 4 5 5 0 0 1-8-4" />
+          <path d="M5 21h14" />
         </svg>
       </div>
     ),

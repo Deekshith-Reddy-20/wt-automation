@@ -12,7 +12,7 @@ function builder(table: string) {
     table === 'profiles'
       ? { data: { account_id: 'acct-1', account_role: callerRole }, error: null }
       : table === 'accounts'
-        ? { data: { id: 'acct-1', name: 'Suraj Solar' }, error: null }
+        ? { data: { id: 'acct-1', name: 'V-Farms' }, error: null }
         : table === 'whatsapp_config'
         ? { data: storedConfig, error: null }
         : { data: null, error: null }

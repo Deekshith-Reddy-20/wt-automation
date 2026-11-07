@@ -7,7 +7,7 @@ import {
   sendTextMessage,
 } from './meta-api'
 import { withSimulatedMetaSends } from './send-simulation'
-import { LANGUAGE_OPTIONS, WELCOME_TEXT } from '@/lib/suraj-solar/lead-flow'
+import { LANGUAGE_OPTIONS, WELCOME_TEXT } from '@/lib/flows/__fixtures__/sample-lead-flow'
 
 const creds = { phoneNumberId: 'PNID', accessToken: 'TOKEN', to: '+915555599999' }
 const fetchMock = vi.fn()

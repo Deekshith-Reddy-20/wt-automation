@@ -1,7 +1,7 @@
-# Module Status — Suraj Solar CRM (WACRM fork)
+# Module Status — V-Farms CRM (WACRM fork)
 
 Baseline: `ArnasDon/wacrm` `main` @ `f6a9a1211e28efaa37c5ca7e75fdc0ccdfbb1ba0` (v0.8.0, 2026-10-16).
-Working branch: `suraj-solar/customization`. Validated 2026-10-17 against a local Supabase stack
+Shared CRM modules validated 2026-10-17 against a local Supabase stack
 (Supabase CLI 2.121, Postgres 17) with mock Meta credentials.
 
 ## Legend
@@ -22,7 +22,7 @@ Working branch: `suraj-solar/customization`. Validated 2026-10-17 against a loca
 |---|---|---|---|---|
 | Contacts | `src/app/(dashboard)/contacts`, `src/components/contacts`, `/api/v1/contacts` | 001, 017, 022 | **Validated** | Smoke: page 200, API create/list, RLS isolation |
 | Contact tags | `/api/contacts/[id]/tags`, `src/lib/contacts/tag-*.ts` | 001, 025 | **Validated** | Smoke: tag add via API fires `tag_added` automation |
-| Custom fields | `src/components/contacts/custom-fields-manager.tsx` | 001 | **Validated** | 11 solar fields seeded; engine writes `custom:<id>` values (smoke) |
+| Custom fields | `src/components/contacts/custom-fields-manager.tsx` | 001 | **Validated** | Engine writes `custom:<id>` values (smoke) |
 | CSV import / export | `src/components/contacts/import-*`, `src/lib/contacts` | — | **Installed** | Unit tests (CSV parsing, phone normalisation); UI not driven by a browser |
 | Duplicate detection | `src/lib/contacts/dedupe.ts` | 022, 036, 040 | **Validated** | Unit tests + unique indexes verified; webhook replay creates no duplicate |
 | Search & filtering | contacts page, `filter_contacts_by_tags` RPC | 025 | **Installed** | Unit tests; RPC present |
@@ -40,7 +40,7 @@ Working branch: `suraj-solar/customization`. Validated 2026-10-17 against a loca
 | Shared team inbox | `src/app/(dashboard)/inbox` | 017, 024 | **Validated** | Smoke: page 200 for owner + viewer; realtime not browser-tested |
 | Text & media messages | send route, `chat-media` bucket, media proxy | 023, 039, 043 | **Installed** | Buckets + scoped storage policies verified; media needs Meta |
 | Conversation status / assignment / notes | inbox components, `contact_notes` | 001, 002 | **Validated** | Engine assignment validated (smoke); notes seeded |
-| Message templates | `/api/whatsapp/templates/*`, `template-validators.ts` | 014 | **Installed** | 3 DRAFT solar templates seeded; dry-run mode on; Meta submission needs credentials |
+| Message templates | `/api/whatsapp/templates/*`, `template-validators.ts` | 014 | **Installed** | Dry-run mode on; Meta submission needs credentials |
 | Delivery / read tracking | `message-status-sync.ts`, status webhook | 042, 054 | **Validated (simulated)** | Smoke: signed status payload accepted; forward-only logic unit-tested |
 | Conversation filtering | inbox filters | 025 | **Installed** | Unit tests |
 
@@ -74,7 +74,7 @@ Working branch: `suraj-solar/customization`. Validated 2026-10-17 against a loca
 
 | Feature | Status | Evidence |
 |---|---|---|
-| Pipelines / Kanban | **Validated** | `/pipelines` 200; "Solar Sales" pipeline with 8 stages seeded |
+| Pipelines / Kanban | **Validated** | `/pipelines` 200; stages and deals CRUD validated |
 | Lead stages | **Validated** | New Lead → Contacted → Qualified → Site Survey → Quotation Sent → Negotiation → Won / Lost |
 | Deal assignment | **Installed** | `deals.assigned_to` (002); sample deals assigned |
 | Pipeline analytics | **Installed** | Dashboard pipeline-value chart |
@@ -110,7 +110,7 @@ Working branch: `suraj-solar/customization`. Validated 2026-10-17 against a loca
 |---|---|---|
 | Public REST API `/api/v1` | **Validated** | `docs/public-api.md`; smoke covers me/contacts/scopes/revocation |
 | Outbound event webhooks | **Installed** | `/api/v1/webhooks`, HMAC-signed deliveries (unit) |
-| MCP server | **Removed** (cleanup, 2026-10-21) | Optional upstream package; not used by Suraj Solar. The public API it wrapped (`/api/v1`) is unchanged. |
+| MCP server | **Removed** (cleanup, 2026-10-21) | Optional upstream package; not used. The public API it wrapped (`/api/v1`) is unchanged. |
 | Docker / Compose | **Validated** | Image builds, runs non-root, healthy, no `.env*` inside; full smoke 80/80 against container |
 | Database migrations | **Validated** | 53 migrations applied in order; `supabase/ci/verify-schema.sql` passes |
 | Unit tests | **Validated** | 1,444 / 1,444 |

@@ -11,6 +11,7 @@ export type TemplateSlug =
   | 'out_of_office'
   | 'lead_qualifier'
   | 'follow_up_reminder'
+  | 'resort_booking_enquiry'
 
 export interface TemplateStepSeed {
   step_type: AutomationStepType
@@ -130,6 +131,31 @@ export const AUTOMATION_TEMPLATES: Record<TemplateSlug, AutomationTemplateDefini
         step_config: {
           text: t('follow_up_reminder.text'),
         },
+      },
+    ],
+  },
+  // Collects what staff need to check the estate calendar, then hands the
+  // chat to a person. States no rates or availability: only staff (or the
+  // V-Farms bot, from configured data) may confirm those.
+  resort_booking_enquiry: {
+    slug: 'resort_booking_enquiry',
+    name: t('resort_booking_enquiry.name'),
+    description: t('resort_booking_enquiry.description'),
+    trigger_type: 'keyword_match',
+    trigger_config: {
+      keywords: keywords('resort_booking_enquiry.keywords'),
+      match_type: 'word',
+    },
+    steps: [
+      {
+        step_type: 'send_message',
+        step_config: {
+          text: t('resort_booking_enquiry.text'),
+        },
+      },
+      {
+        step_type: 'assign_conversation',
+        step_config: { mode: 'round_robin' },
       },
     ],
   },

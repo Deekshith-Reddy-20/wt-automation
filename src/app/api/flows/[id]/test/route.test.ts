@@ -26,7 +26,7 @@ vi.mock('@/lib/flows/admin-client', async () => {
 
 import { POST } from './route'
 import { FLOW_TEST_CONTACT_PHONE } from '@/lib/flows/test-contact'
-import { LEAD_FLOW_CUSTOM_FIELDS, MESSAGES, WELCOME_TEXT, buildLeadFlow } from '@/lib/suraj-solar/lead-flow'
+import { LEAD_FLOW_CUSTOM_FIELDS, MESSAGES, WELCOME_TEXT, buildLeadFlow } from '@/lib/flows/__fixtures__/sample-lead-flow'
 
 const fetchMock = vi.fn(async () => {
   throw new Error('network access attempted during a simulated test run')

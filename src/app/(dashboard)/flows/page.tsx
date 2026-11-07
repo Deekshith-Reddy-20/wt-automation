@@ -20,6 +20,7 @@ import {
 
 import { useTranslations } from "next-intl";
 import { useCan } from "@/hooks/use-can";
+import { ResortAutomationsSection } from "@/components/automations/resort-automations-section";
 import { Button } from "@/components/ui/button";
 import { GatedButton } from "@/components/ui/gated-button";
 import {
@@ -92,6 +93,9 @@ export default function FlowsPage() {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [templates, setTemplates] = useState<TemplateSummary[]>([]);
+  const [showArchived, setShowArchived] = useState(false);
+  const archivedCount = flows.filter((f) => f.status === "archived").length;
+  const visibleFlows = showArchived ? flows : flows.filter((f) => f.status !== "archived");
 
   useEffect(() => {
     let cancelled = false;
@@ -218,7 +222,24 @@ export default function FlowsPage() {
         </GatedButton>
       </header>
 
-      {flows.length === 0 ? (
+      <ResortAutomationsSection variant="flows" />
+
+      <div className="flex flex-wrap items-end justify-between gap-2 border-t border-border pt-6">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Custom flows</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Flows built in the visual builder. Keep them off while the V-Farms WhatsApp bot is on, so guests get one reply.
+          </p>
+        </div>
+        {archivedCount > 0 && (
+          <Button variant="ghost" size="sm" onClick={() => setShowArchived((v) => !v)}>
+            <Archive className="h-3.5 w-3.5" />
+            {showArchived ? "Hide archived" : `Show archived (${archivedCount})`}
+          </Button>
+        )}
+      </div>
+
+      {visibleFlows.length === 0 ? (
         <EmptyState
           onCreate={() => setCreateOpen(true)}
           canCreate={canCreate}
@@ -226,7 +247,7 @@ export default function FlowsPage() {
         />
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {flows.map((flow) => (
+          {visibleFlows.map((flow) => (
             <FlowCard
               key={flow.id}
               flow={flow}

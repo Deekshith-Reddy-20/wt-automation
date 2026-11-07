@@ -82,7 +82,7 @@ export function AiConfig() {
   // Guard keyed on the account (not a bare boolean) so an in-place
   // account switch — ownership transfer, multi-account membership —
   // refetches instead of showing the previous account's config. Mirrors
-  // the loadedAccountIdRef pattern in whatsapp-config.tsx.
+  // the loadedAccountIdRef pattern in other settings panels.
   const loadedAccountIdRef = useRef<string | null>(null);
 
   const fetchConfig = useCallback(async () => {

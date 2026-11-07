@@ -232,7 +232,7 @@ const FAQ_BOT: FlowTemplate = {
 };
 
 // ============================================================
-// 3. Lead capture — collect_input chain, ends in a handoff
+// 3. Guest enquiry details — collect_input chain, ends in a handoff
 // ============================================================
 const LEAD_CAPTURE: FlowTemplate = {
   slug: "lead_capture",
@@ -262,24 +262,24 @@ const LEAD_CAPTURE: FlowTemplate = {
       config: {
         prompt_text: t("lead_capture.askName"),
         var_key: "name",
-        next_node_key: "ask_email",
+        next_node_key: "ask_dates",
       } as CollectInputNodeConfig,
     },
     {
-      node_key: "ask_email",
+      node_key: "ask_dates",
       node_type: "collect_input",
       config: {
         prompt_text: t("lead_capture.askEmail", { name: "{{vars.name}}" }),
-        var_key: "email",
-        next_node_key: "ask_company",
+        var_key: "dates",
+        next_node_key: "ask_guests",
       } as CollectInputNodeConfig,
     },
     {
-      node_key: "ask_company",
+      node_key: "ask_guests",
       node_type: "collect_input",
       config: {
         prompt_text: t("lead_capture.askCompany"),
-        var_key: "company",
+        var_key: "guests",
         next_node_key: "handoff",
       } as CollectInputNodeConfig,
     },
@@ -289,8 +289,8 @@ const LEAD_CAPTURE: FlowTemplate = {
       config: {
         note: t("lead_capture.handoffNote", {
           name: "{{vars.name}}",
-          email: "{{vars.email}}",
-          company: "{{vars.company}}",
+          dates: "{{vars.dates}}",
+          guests: "{{vars.guests}}",
         }),
       } as HandoffNodeConfig,
     },

@@ -1,8 +1,9 @@
 # Running with Docker
 
 The repo ships a multi-stage `Dockerfile` (Next.js standalone output,
-runs as a non-root user) and a `docker-compose.yml` with a single
-`app` service. Supabase is external — point the app at your hosted
+runs as a non-root user) and a `docker-compose.yml` with the `app`,
+a `scheduler` for the every-minute jobs, and an optional `caddy`
+HTTPS proxy (`--profile https`). Supabase is external — point the app at your hosted
 (or self-hosted) Supabase project via env vars; no database container
 is included.
 
@@ -48,9 +49,9 @@ is included.
 docker build \
   --build-arg NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co \
   --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key \
-  -t wacrm .
+  -t vfarms-app .
 
-docker run -d --env-file .env.local -e PORT=3000 -p 3000:3000 wacrm
+docker run -d --env-file .env.local -e PORT=3000 -p 3000:3000 vfarms-app
 ```
 
 ## Notes
@@ -66,9 +67,50 @@ docker run -d --env-file .env.local -e PORT=3000 -p 3000:3000 wacrm
   Attachment Storage; attachments received while it's off become
   unviewable once Meta drops them. Files over 16 MB (the bucket's
   limit) are never copied.
-- Nothing inside the container is scheduled. If you use automation
-  Wait steps or flows, point an external scheduler at
-  `GET /api/automations/cron` and `GET /api/flows/cron` on this
-  deployment, sending the shared secret in the `x-cron-secret` header
-  (`AUTOMATION_CRON_SECRET`, see `.env.local.example`). Both return
-  503 until that variable is set.
+- The `scheduler` service calls `/api/resort/cron`,
+  `/api/automations/cron`, `/api/flows/cron` and
+  `/api/whatsapp/webhook/sweep` every minute with the
+  `AUTOMATION_CRON_SECRET` header. Without that variable the jobs
+  return 503 and guest reminders, hold expiry and MSG91 delivery
+  status never run. `docker compose logs scheduler` prints only
+  failed calls.
+
+## Deploying to a server (VPS)
+
+Any Linux server with Docker works (Hostinger VPS, DigitalOcean,
+AWS Lightsail, …).
+
+1. Install Docker: `curl -fsSL https://get.docker.com | sh`.
+2. Point your domain's DNS **A record** at the server's IP and open
+   ports 80 and 443 in the server firewall.
+3. Copy the project to the server (`git clone`, or `scp` the folder
+   without `node_modules` / `.next`), then create `.env.local` with
+   the production values. On top of the local ones set:
+
+   ```bash
+   NEXT_PUBLIC_SITE_URL=https://crm.vfarms.in
+   DOMAIN=crm.vfarms.in
+   HOST_BIND=127.0.0.1
+   AUTOMATION_CRON_SECRET=<openssl rand -hex 32>
+   ```
+
+4. Build and start the app, scheduler and Caddy (HTTPS with an
+   automatic Let's Encrypt certificate):
+
+   ```bash
+   docker compose --env-file .env.local --profile https up --build -d
+   docker compose ps          # app should be "healthy"
+   ```
+
+5. In MSG91 → WhatsApp → Webhook (New) → **On Inbound Request
+   Received**, set `https://<DOMAIN>/api/msg91/webhook` (POST, JSON).
+   Once that is live, stop any local ngrok tunnel so MSG91 has a
+   single destination.
+
+Update after code changes: `git pull && docker compose --env-file
+.env.local --profile https up --build -d`. Logs: `docker compose logs
+-f app`.
+
+If the host already runs its own web server / panel proxy (Nginx,
+Traefik, Coolify, Hostinger's Docker manager), skip `--profile https`
+and proxy your domain to port 3000 instead.

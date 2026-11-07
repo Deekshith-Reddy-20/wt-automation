@@ -202,7 +202,7 @@ export interface Conversation {
 // Notifications (migration 027)
 // ============================================================
 
-export type NotificationType = 'conversation_assigned';
+export type NotificationType = 'conversation_assigned' | 'resort_alert';
 
 export interface Notification {
   id: string;
@@ -216,6 +216,8 @@ export interface Notification {
   actor_user_id?: string;
   title: string;
   body?: string;
+  /** In-app destination for resort alerts, e.g. /resort/bookings/<id>. */
+  link_path?: string | null;
   read_at?: string;
   created_at: string;
 }

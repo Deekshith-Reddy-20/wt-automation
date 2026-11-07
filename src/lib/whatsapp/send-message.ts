@@ -19,7 +19,12 @@
 // without duplicating ~250 lines of Meta plumbing.
 // ============================================================
 
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { sendSessionText } from '@/lib/msg91/client';
+import { msg91Configured } from '@/lib/msg91/env';
+import { persistOutbound } from '@/lib/msg91/provider';
 
 import {
   sendTextMessage,
@@ -37,6 +42,7 @@ import {
 import { decrypt, encrypt, isLegacyFormat } from '@/lib/whatsapp/encryption';
 import { markTokenRejected } from '@/lib/whatsapp/token-health';
 import { supabaseAdmin } from '@/lib/flows/admin-client';
+import { setHumanMode } from '@/lib/resort/bot/mode';
 import {
   phoneVariants,
   isRecipientNotAllowedError,
@@ -256,6 +262,16 @@ export async function sendMessageToConversation(
   const sendTarget = resolvedTarget.target;
   const hasValidPhone = resolvedTarget.isPhone;
   const sanitizedPhone = hasValidPhone ? sendTarget : '';
+
+  if (msg91Configured()) {
+    return sendViaMsg91(db, accountId, {
+      conversationId,
+      contactId: contact.id,
+      phone: sanitizedPhone,
+      messageType,
+      contentText: contentText ?? null,
+    });
+  }
 
   // WhatsApp config, account-scoped.
   const { data: config, error: configError } = await db
@@ -523,6 +539,59 @@ export async function sendMessageToConversation(
     })
     .eq('id', conversationId);
 
+  await yieldAutomationToAgent(accountId, contact.id, conversationId);
+
+  return { messageId: messageRecord.id, whatsappMessageId: waMessageId };
+}
+
+/**
+ * Agent reply through MSG91 (session text only — MSG91 templates and media
+ * are not wired into the inbox composer).
+ */
+async function sendViaMsg91(
+  db: SupabaseClient,
+  accountId: string,
+  args: {
+    conversationId: string;
+    contactId: string;
+    phone: string;
+    messageType: string;
+    contentText: string | null;
+  }
+): Promise<SendMessageResult> {
+  if (args.messageType !== 'text' || !args.contentText?.trim()) {
+    throw new SendMessageError(
+      'unsupported_message_type',
+      'WhatsApp is connected through MSG91, which supports text replies from the inbox.',
+      400
+    );
+  }
+  if (!args.phone) {
+    throw new SendMessageError('bad_request', 'Contact has no phone number', 400);
+  }
+  const sent = await sendSessionText({ to: args.phone, text: args.contentText });
+  if (!sent.ok) {
+    throw new SendMessageError('msg91_error', `MSG91 error: ${sent.error}`, 502);
+  }
+  const whatsappMessageId = sent.messageId ?? `msg91-out:${randomUUID()}`;
+  const messageId = await persistOutbound(
+    db,
+    { accountId, conversationId: args.conversationId },
+    { text: args.contentText, messageId: whatsappMessageId, senderType: 'agent', simulated: sent.dryRun }
+  );
+  if (!messageId) {
+    throw new SendMessageError('db_error', 'Message sent but failed to save to DB', 500);
+  }
+  await yieldAutomationToAgent(accountId, args.contactId, args.conversationId);
+  return { messageId, whatsappMessageId };
+}
+
+async function yieldAutomationToAgent(
+  accountId: string,
+  contactId: string,
+  conversationId: string
+): Promise<void> {
+  const contact = { id: contactId };
   // Pause any active Flow run for this contact — the agent stepping in
   // is the strongest "yield, human is here" signal. Best-effort.
   try {
@@ -546,5 +615,28 @@ export async function sendMessageToConversation(
     );
   }
 
-  return { messageId: messageRecord.id, whatsappMessageId: waMessageId };
+  // Same signal for the V-Farms resort bot: once a person replies, the bot
+  // stays silent until someone returns the conversation to bot mode.
+  try {
+    const admin = supabaseAdmin();
+    const { data: resort } = await admin
+      .from('property_settings')
+      .select('bot_enabled')
+      .eq('account_id', accountId)
+      .maybeSingle();
+    if (resort?.bot_enabled) {
+      await setHumanMode(admin, {
+        accountId,
+        conversationId,
+        contactId: contact.id,
+        userId: null,
+        reason: 'agent_replied',
+      });
+    }
+  } catch (err) {
+    console.error(
+      '[resort-bot] human-mode-on-agent-send failed:',
+      err instanceof Error ? err.message : err
+    );
+  }
 }

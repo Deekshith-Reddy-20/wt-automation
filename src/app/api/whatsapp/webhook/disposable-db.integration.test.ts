@@ -116,7 +116,7 @@ import {
   MESSAGES,
   WELCOME_TEXT,
   buildLeadFlow,
-} from '@/lib/suraj-solar/lead-flow'
+} from '@/lib/flows/__fixtures__/sample-lead-flow'
 import { encrypt } from '@/lib/whatsapp/encryption'
 import { invalidateWhatsAppConfigCache } from '@/lib/whatsapp/config-cache'
 import { resetInboundContextRpcAvailability } from '@/lib/whatsapp/inbound-context-rpc'
@@ -588,6 +588,52 @@ describe.skipIf(!ENABLED)('migration 058 on a disposable database (real Postgres
     } finally {
       execFileSync('docker', ['exec', CONTAINER, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-f', '/tmp/migrations/058_resolve_inbound_context.sql'])
       await reloadRestSchema(true)
+    }
+  })
+
+  it('V-Farms bot: welcome list once per message, menu tap starts the flow, staff takeover pauses it, resume restarts it', async () => {
+    psql(`
+      INSERT INTO property_settings (account_id, bot_enabled, test_mode) VALUES ('${accountId}', true, false)
+        ON CONFLICT (account_id) DO UPDATE SET bot_enabled = true, test_mode = false;
+      INSERT INTO resort_automations (account_id, key, name, trigger_type, is_enabled)
+        VALUES ('${accountId}', 'welcome_menu', 'Welcome and Guest Menu', 'inbound_message', true),
+               ('${accountId}', 'event_enquiry', 'Exclusive Event Enquiry', 'interactive_reply', true)
+        ON CONFLICT (account_id, key) DO UPDATE SET is_enabled = true;`)
+    try {
+      const phone = nextPhone()
+      const first = textPayload(phone, nextWamid(), 'Hi')
+      await deliver(first)
+      await deliver(first)
+      expect(sentTo(phone)).toHaveLength(1)
+      const welcome = lastTo(phone)
+      expect(welcome).toMatchObject({ type: 'interactive', kind: 'list' })
+      expect(welcome.body.startsWith('🌿 Welcome to V-Farms!')).toBe(true)
+      expect(welcome.options).toEqual(['m_stay', 'm_event', 'm_pricing', 'm_avail', 'm_explore', 'm_location', 'm_human'])
+
+      const [contact] = await contactsFor(phone)
+      const [conv] = await conversationsFor(contact.id as string)
+      const state = () => psql(`SELECT flow || ':' || bot_mode FROM conversation_states WHERE conversation_id = '${conv.id}';`)
+
+      await tap(phone, 'm_event')
+      expect(sentTo(phone)).toHaveLength(2)
+      expect(lastTo(phone).body).not.toBe(welcome.body)
+      expect(state()).toBe('event:bot')
+
+      const { setHumanMode, resumeBotMode } = await import('@/lib/resort/bot/mode')
+      await setHumanMode(db, { accountId, conversationId: conv.id as string, contactId: contact.id as string, userId: OWNER, reason: 'staff_takeover' })
+      await say(phone, 'Is anyone there?')
+      expect(sentTo(phone)).toHaveLength(2)
+      expect(state().endsWith(':human')).toBe(true)
+      const msgs = await messagesIn(conv.id as string)
+      expect(msgs.filter((m) => m.sender_type === 'customer' && m.content_text === 'Is anyone there?')).toHaveLength(1)
+      expect(msgs.filter((m) => m.sender_type === 'bot')).toHaveLength(2)
+
+      expect(await resumeBotMode(db, { accountId, conversationId: conv.id as string, userId: OWNER })).toBe(true)
+      await say(phone, 'Hello')
+      expect(sentTo(phone)).toHaveLength(3)
+      expect(lastTo(phone).options).toEqual(welcome.options)
+    } finally {
+      psql(`UPDATE property_settings SET bot_enabled = false WHERE account_id = '${accountId}';`)
     }
   })
 

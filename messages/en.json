@@ -20,17 +20,20 @@
     "rateLimited": "Too many attempts. Wait a minute and try again."
   },
   "Sidebar": {
-    "title": "Suraj Solar CRM",
+    "title": "V-Farms",
     "primaryNav": "Primary",
     "dashboard": "Dashboard",
     "inbox": "Inbox",
     "notifications": "Notifications",
-    "contacts": "Contacts",
-    "pipelines": "Pipelines",
+    "contacts": "Contacts / Guests",
+    "pipelines": "Leads / Pipelines",
     "broadcasts": "Broadcasts",
+    "bookings": "Bookings",
+    "availabilityCalendar": "Availability Calendar",
     "automations": "Automations",
     "flows": "Flows",
     "aiAgents": "AI Agents",
+    "resort": "V-Farms Resort",
     "settings": "Settings",
     "unreadConversations": "{count} unread {count, plural, =1 {conversation} other {conversations}}",
     "unreadNotifications": "{count} unread {count, plural, =1 {notification} other {notifications}}",
@@ -70,6 +73,8 @@
     "unlinkedBody": "Nothing you change will be saved while this is unresolved — the database rejects every write from a user with no account or role. If you were invited to a team, ask the owner to re-send the invitation. On a self-hosted install, check that the account-bootstrap migration ran for this user.",
     "errorTitle": "Could not load your permissions",
     "errorBody": "Your account role did not load, so every action is treated as read-only and changes will not save. Check your connection and try again.",
+    "schemaTitle": "Database setup incomplete",
+    "schemaBody": "The connected Supabase project does not have this app's tables yet (public.profiles is missing), so your role cannot load and every action is read-only. Run supabase/apply/vfarms_full_setup.sql in the Supabase SQL Editor (see SUPABASE_SETUP.md, section B), then press Retry.",
     "retry": "Retry"
   },
   "Dashboard": {
@@ -928,12 +933,14 @@
   "Automations": {
     "list": {
       "title": "Automations",
-      "subtitle": "Build workflows that react to WhatsApp® events automatically.",
+      "subtitle": "Manage automated guest conversations, availability enquiries, resort bookings, payments, and follow-ups.",
       "create": "Create Automation",
       "retry": "Retry",
       "templatesTitle": "Quick-start templates",
-      "emptyTitle": "No automations yet",
-      "emptyDesc": "Pick a template above or create one from scratch.",
+      "customTitle": "Custom automations",
+      "customDesc": "General WhatsApp automations. The V-Farms resort bot answers first in conversations it handles.",
+      "emptyTitle": "No custom automations",
+      "emptyDesc": "Create one from scratch or from a template.",
       "runs": "{count} run",
       "runsPlural": "{count} runs",
       "lastRun": "last {time}",
@@ -1169,57 +1176,13 @@
         "when": "when {subject}",
         "noUrl": "no url"
       }
-    },
-    "leadFlow": {
-      "badge": "WhatsApp flow",
-      "trigger": "Starts on the first message of a new conversation",
-      "restartHint": "Restart keywords: {keywords}",
-      "languages": "Languages",
-      "status": {
-        "draft": "Draft",
-        "active": "Active",
-        "paused": "Paused",
-        "error": "Error"
-      },
-      "executions": "{count, plural, =1 {# execution} other {# executions}}",
-      "lastRun": "Last run {time}",
-      "lastError": "Last error: {error}",
-      "invalidConfig": "flow has no entry node or no steps",
-      "notInstalled": "not installed yet. Run scripts/seed-suraj-solar.mjs to create it as a draft.",
-      "edit": "View / edit",
-      "history": "Execution history",
-      "test": "Test",
-      "activate": "Activate",
-      "pause": "Pause",
-      "activateTitle": "Activate for real customers?",
-      "activateDesc": "Once active, every new WhatsApp conversation on your connected number receives this flow's messages. Test it first and keep conflicting automations paused.",
-      "activateConfirm": "Activate flow",
-      "cancel": "Cancel",
-      "toasts": {
-        "activated": "Flow activated.",
-        "paused": "Flow paused.",
-        "invalid": "Fix the flow's validation issues in the editor before activating.",
-        "updateFailed": "Status update failed: {error}"
-      },
-      "testDialog": {
-        "title": "Test flow with mock messages",
-        "desc": "Messages come from a test contact (+91 55555 99999). Nothing is sent to WhatsApp; answers, scores and CRM updates are saved on that contact.",
-        "empty": "Send any message (for example \"Hi\") to start the flow.",
-        "customer": "Customer (mock)",
-        "bot": "Bot (simulated)",
-        "placeholder": "Type a customer message…",
-        "send": "Send",
-        "reset": "Reset",
-        "failed": "Test failed: {error}",
-        "runStatus": "Run: {status} · current step {node}"
-      }
     }
   },
   "Flows": {
     "list": {
       "title": "Flows",
-      "description": "Build branching, button-driven WhatsApp conversations. Useful for menus, FAQs, and triage before a human steps in.",
-      "newFlow": "New flow",
+      "description": "The V-Farms guest conversation flows — enquiries, availability, quotes, bookings, payments and follow-ups — plus any custom flows you build.",
+      "newFlow": "New custom flow",
       "statusDraft": "Draft",
       "statusActive": "Active",
       "statusArchived": "Archived",
@@ -1229,8 +1192,8 @@
       "deleteConfirm": "Delete \"{name}\"? Any active runs will end immediately.",
       "deleteSuccess": "Flow deleted.",
       "deleteError": "Couldn't delete flow.",
-      "emptyTitle": "No flows yet",
-      "emptyDesc": "Build your first conversation — a welcome menu, an order lookup, an FAQ bot. Customers tap buttons; the bot routes them to the right answer (or the right agent).",
+      "emptyTitle": "No custom flows",
+      "emptyDesc": "The V-Farms flows above cover guest enquiries and bookings. Build a custom flow only for something they don't handle.",
       "createFirst": "Create your first flow",
       "createTitle": "Create a new flow",
       "createDesc": "Start from a template or build from scratch.",
@@ -1575,7 +1538,7 @@
       "done": "Done",
       "dialogTitle": "Invite a teammate",
       "networkError": "Could not reach the server. Try again?",
-      "fallbackAccountName": "our Suraj Solar CRM account",
+      "fallbackAccountName": "our V-Farms account",
       "dialogDesc": "Generate a one-time invite link. Share it via WhatsApp, Slack, or any channel you like — no email service required.",
       "roleLabel": "Role",
       "validForLabel": "Link valid for",
@@ -1595,8 +1558,8 @@
       "labelTooLong": "Label must be {max} characters or fewer",
       "copied": "Invite link copied",
       "clipboardBlocked": "Clipboard blocked — copy the link manually",
-      "whatsappMessage": "Join {accountName} on Suraj Solar CRM using this link (valid for {expiresInDays} days): {url}",
-      "whatsappMessageNever": "Join {accountName} on Suraj Solar CRM using this link: {url}",
+      "whatsappMessage": "Join {accountName} on V-Farms using this link (valid for {expiresInDays} days): {url}",
+      "whatsappMessageNever": "Join {accountName} on V-Farms using this link: {url}",
       "createFailed": "Failed to create invitation"
     },
     "tagsAndFields": {
@@ -1884,6 +1847,34 @@
       },
       "shortLivedToken": "Saved, but this is a short-lived token that expires at {when}. Replace it with a System User token from Meta Business Settings, or WhatsApp sending stops when it expires.",
       "shortLivedTokenNoExpiry": "Saved, but this is a personal (user) access token, which Meta expires. Replace it with a System User token from Meta Business Settings."
+    },
+    "whatsappMsg91": {
+      "title": "WhatsApp via MSG91",
+      "description": "V-Farms guest WhatsApp runs inside this CRM (no separate server on 3001). Add MSG91 variables to .env.local at the repo root, run npm run dev (port 3000), then wire the MSG91 panel. Meta Cloud API credentials are not used on this screen.",
+      "metaRemovedTitle": "Meta credentials removed from this page",
+      "metaRemovedBody": "Phone Number ID, WABA ID, Meta access token, and Meta webhook verify token are not used for the MSG91 stack. Do not paste them here — configure WhatsApp in the MSG91 dashboard and set MSG91_AUTHKEY and MSG91_INTEGRATED_NUMBER in this app’s .env.local (repo root).",
+      "whatYouNeedTitle": "What you need from MSG91",
+      "whatYouNeedDesc": "These are the only pieces required for inbound + outbound WhatsApp through MSG91.",
+      "needAuthkey": "Auth key from the MSG91 dashboard (MSG91_AUTHKEY).",
+      "needIntegratedNumber": "Integrated WhatsApp business number, digits with country code and no plus (MSG91_INTEGRATED_NUMBER), e.g. 919876543210.",
+      "needWebhook": "Inbound webhook in MSG91 → WhatsApp → Webhook (New) → On Inbound Request Received → POST JSON to your public URL …/api/msg91/webhook (expose port 3000 with ngrok while developing).",
+      "envTitle": "Environment file (repo root .env.local)",
+      "envDesc": "See .env.local.example. Never commit .env.local.",
+      "yourAuthkey": "your_authkey_from_dashboard",
+      "yourIntegratedNumber": "919876543210",
+      "webhookTitle": "Webhook URL (paste into MSG91)",
+      "webhookDesc": "Replace YOUR_NGROK_HOST with the hostname ngrok shows when you run ngrok http 3000.",
+      "webhookSteps": "In MSG91: WhatsApp → Webhook → Create → Service WhatsApp → Event On Inbound Request Received → Method POST → Content-Type JSON → URL below.",
+      "placeholderOrigin": "https://YOUR_NGROK_HOST",
+      "inboxHint": "Guest messages and bot replies appear in the Inbox (same host):",
+      "runTitle": "Run the CRM",
+      "runDesc": "From the repo root (default dev URL http://localhost:3000):",
+      "ngrok": "In another terminal, expose port 3000:",
+      "docsPrefix": "Full steps:",
+      "msg91Docs": "MSG91 WhatsApp documentation",
+      "copy": "Copy",
+      "copied": "Copied",
+      "copyFailed": "Could not copy"
     },
     "sections": {
       "overview": "Overview",
@@ -2325,7 +2316,7 @@
     }
   },
   "Metadata": {
-    "description": "Suraj Solar's WhatsApp CRM — solar enquiries, site surveys, quotations and follow-ups."
+    "description": "V-Farms resort CRM — WhatsApp enquiries, availability, bookings and guest follow-ups."
   },
   "Currency": {
     "USD": "US Dollar",
@@ -2363,57 +2354,63 @@
     "out_of_office": {
       "name": "Out of Office",
       "description": "Auto-reply during off-hours so nobody is left waiting.",
-      "text": "Thanks for your message! Our team is offline right now (9am–6pm) and will reply first thing tomorrow."
+      "text": "Thanks for your message! Our team is away right now and will reply as soon as they're back."
     },
     "lead_qualifier": {
-      "name": "Lead Qualifier",
-      "description": "Ask qualification questions to filter inbound leads.",
-      "keywords": "pricing,quote,buy",
-      "text": "Great — happy to help with pricing! Quick question: roughly how many seats are you looking for?"
+      "name": "Pricing enquiry",
+      "description": "When a guest asks about pricing, ask for their dates and group size, then assign the chat to the team to quote.",
+      "keywords": "pricing,quote,rates",
+      "text": "Happy to help with pricing! Which dates are you looking at, and how many guests (adults and children)?"
     },
     "follow_up_reminder": {
       "name": "Follow-up Reminder",
       "description": "Send a nudge if a contact has not replied within 24 hours.",
       "text": "Just circling back — did you have any other questions for us? Happy to help!"
+    },
+    "resort_booking_enquiry": {
+      "name": "V-Farms · Booking & availability enquiry",
+      "description": "When a guest asks about booking, availability, rates or events, ask for the details staff need to check the estate calendar, then assign the chat to a team member. Keep it off while the V-Farms WhatsApp bot is on, so guests don't get two replies.",
+      "keywords": "book,booking,availability,available,stay,farmstay,rooms,tariff,price,rates,event,birthday,party,wedding,weekend",
+      "text": "Thank you for contacting V-Farms 🌿 — a private five-acre dragon fruit farm near Hyderabad, reserved for one group at a time.\n\nTo check availability, please share:\n1. Stay or event?\n2. Dates — check-in and check-out, or the event date and time\n3. Number of adults and children (or total guests for an event)\n4. Any special requirements\n\nOur team will check the calendar and reply with availability and a quote. Nothing is reserved until we confirm it."
     }
   },
   "StarterFlows": {
     "welcome_menu": {
-      "name": "Welcome menu",
-      "description": "Greet customers who type a keyword and route them to the right agent based on whether they're new or existing.",
-      "keywords": "support,help,hi",
-      "text": "Hi! 👋 Welcome to support. Are you an existing customer or new here?",
+      "name": "Guest help menu",
+      "description": "When a guest types a keyword, ask whether they have a booking or a new enquiry and route them to the team with that context.",
+      "keywords": "help,support,hi",
+      "text": "Hi! 👋 Welcome to V-Farms. Do you have an existing booking, or is this a new enquiry?",
       "footer": "Tap a button below to continue.",
-      "existingButton": "Existing customer",
-      "newButton": "New customer",
-      "existingNote": "Existing customer needs assistance — please check account history before replying.",
-      "newNote": "New customer — share pricing + onboarding link."
+      "existingButton": "Existing booking",
+      "newButton": "New enquiry",
+      "existingNote": "Guest with an existing booking needs help — check their booking before replying.",
+      "newNote": "New guest enquiry — check the calendar and the configured rates before replying."
     },
     "faq_bot": {
-      "name": "FAQ bot",
-      "description": "Answer common questions automatically. Customer picks a topic from a list; the bot replies with the answer and ends.",
+      "name": "Guest questions",
+      "description": "The guest picks a topic from a list and the team is notified to reply. It answers nothing itself, so it never states unconfigured details.",
       "keywords": "faq,question,info",
-      "text": "What can I help you with?",
+      "text": "What would you like to know?",
       "buttonLabel": "View topics",
       "commonSection": "Common questions",
-      "hoursRow": "Opening hours",
-      "pricingRow": "Pricing",
-      "refundsRow": "Refund policy",
+      "hoursRow": "Check-in & check-out",
+      "pricingRow": "Pricing & packages",
+      "refundsRow": "Cancellation policy",
       "otherSection": "Other",
-      "humanRow": "Talk to a human",
-      "hoursAnswer": "We're open Mon–Fri, 9am–6pm local time. Weekend support is limited to urgent issues.",
-      "pricingAnswer": "Our pricing starts at $9/mo. Visit https://example.com/pricing for the full breakdown.",
-      "refundsAnswer": "Refunds are honored within 30 days of purchase. Reply with your order number and we'll process it.",
-      "humanNote": "Customer asked to talk to a human from the FAQ bot."
+      "humanRow": "Talk to our team",
+      "hoursAnswer": "Thanks! Our team will reply here with the current check-in and check-out times.",
+      "pricingAnswer": "Thanks! Our team will reply here with current pricing for your dates and group size.",
+      "refundsAnswer": "Thanks! Our team will reply here with our cancellation policy.",
+      "humanNote": "Guest asked to talk to the team from the questions menu."
     },
     "lead_capture": {
-      "name": "Lead capture",
-      "description": "Greet first-time inbounds, capture name + email + company, then hand off to sales with the answers in the note.",
-      "intro": "Welcome! 👋 I'll ask a few quick questions so we can get you to the right person.",
+      "name": "Guest enquiry details",
+      "description": "Collect the guest's name, preferred dates and group size one question at a time, then hand the chat to the team with the answers. Nothing is booked.",
+      "intro": "Welcome to V-Farms! 👋 A few quick questions so our team can check availability for you.",
       "askName": "What's your name?",
-      "askEmail": "Thanks {name}! What's your work email?",
-      "askCompany": "Almost done — what's your company name?",
-      "handoffNote": "New lead — name={name}, email={email}, company={company}."
+      "askEmail": "Thanks {name}! Which dates are you interested in?",
+      "askCompany": "How many guests (adults and children) will there be?",
+      "handoffNote": "New guest enquiry — name={name}, dates={dates}, guests={guests}. Not booked: check the calendar."
     }
   },
   "LibErrors": {
@@ -2866,8 +2863,10 @@
     }
   },
   "WhatsAppHealth": {
-    "title": "WhatsApp integration health",
-    "check": "Check now",
+    "title": "WhatsApp Integration Health",
+    "check": "Check Now",
+    "lastChecked": "Last checked {time}",
+    "neverChecked": "Not checked yet",
     "hint": "Runs read-only checks against Meta and the CRM's own records. Nothing is sent.",
     "checkFailed": "The health check could not run. Are you signed in as a member of this account?",
     "state": {
@@ -2881,8 +2880,11 @@
       "accepted": "accepted",
       "invalid_signature": "rejected — invalid signature",
       "invalid_json": "rejected — invalid JSON",
-      "too_large": "rejected — too large"
+      "too_large": "rejected — too large",
+      "skipped": "ignored (not an inbound message)",
+      "unauthorized": "rejected — webhook secret mismatch"
     },
+    "providerMsg91": "Provider: MSG91 (number {number})",
     "lastWebhookPost": "Last webhook POST: {outcome} at {time}",
     "noWebhookPost": "No webhook POST received by this server since {since}",
     "lastInbound": "Last inbound customer message: {time}",

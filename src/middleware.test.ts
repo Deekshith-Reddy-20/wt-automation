@@ -17,25 +17,28 @@ let refreshedCookies: Array<{
   options: Record<string, unknown>;
 }> = [];
 
-vi.mock("@supabase/ssr", () => ({
-  createServerClient: (
-    _url: string,
-    _key: string,
-    opts: {
-      cookies: { setAll: (c: typeof refreshedCookies) => void };
-    },
-  ) => ({
-    auth: {
-      // Mirrors real auth-js: an expired access token is transparently
-      // refreshed inside getUser(), which rotates the refresh token and
-      // pushes the new cookies through setAll() before resolving.
-      getUser: async () => {
-        if (refreshedCookies.length) opts.cookies.setAll(refreshedCookies);
-        return { data: { user: mockUser } };
+const createServerClient = vi.hoisted(() =>
+  vi.fn(
+    (
+      _url: string,
+      _key: string,
+      opts: {
+        cookies: { setAll: (c: Array<{ name: string; value: string; options: Record<string, unknown> }>) => void };
       },
-    },
-  }),
-}));
+    ) => ({
+      auth: {
+        // Mirrors real auth-js: an expired access token is transparently
+        // refreshed inside getUser(), which rotates the refresh token and
+        // pushes the new cookies through setAll() before resolving.
+        getUser: async () => {
+          if (refreshedCookies.length) opts.cookies.setAll(refreshedCookies);
+          return { data: { user: mockUser } };
+        },
+      },
+    }),
+  ),
+);
+vi.mock("@supabase/ssr", () => ({ createServerClient }));
 
 // Imported after the mock is registered.
 const { middleware } = await import("./middleware");
@@ -47,7 +50,10 @@ beforeEach(() => {
   refreshedCookies = [];
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllEnvs();
+});
 
 const ROTATED = {
   name: "sb-test-auth-token",
@@ -138,6 +144,16 @@ describe("middleware — public WhatsApp webhook", () => {
 
     expect(res.status).toBe(401);
   });
+
+  it("requires a session for the resort admin APIs", async () => {
+    mockUser = null;
+
+    const res = await middleware(
+      new NextRequest("https://app.test/api/admin/bookings"),
+    );
+
+    expect(res.status).toBe(401);
+  });
 });
 
 describe("middleware — every dashboard route requires a session", () => {
@@ -162,5 +178,65 @@ describe("middleware — every dashboard route requires a session", () => {
 
     expect(res.status).toBe(307);
     expect(new URL(res.headers.get("location")!).pathname).toBe("/login");
+  });
+});
+
+describe("middleware — Supabase configuration", () => {
+  it("passes the configured URL and anon key to the client", async () => {
+    mockUser = { id: "user-1" };
+    await middleware(new NextRequest("https://app.test/dashboard"));
+    expect(createServerClient).toHaveBeenCalledWith("https://test.supabase.co", "anon-key", expect.anything());
+  });
+
+  describe.each([
+    ["NEXT_PUBLIC_SUPABASE_URL", ""],
+    ["NEXT_PUBLIC_SUPABASE_ANON_KEY", ""],
+    ["NEXT_PUBLIC_SUPABASE_URL", "https://your-project.supabase.co"],
+    ["NEXT_PUBLIC_SUPABASE_ANON_KEY", "your-anon-key"],
+    ["NEXT_PUBLIC_SUPABASE_URL", "not a url"],
+  ])("with %s = %j", (name, value) => {
+    beforeEach(() => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      vi.stubEnv(name, value);
+    });
+
+    it("refuses protected pages with 503 instead of crashing or letting them through", async () => {
+      const res = await middleware(new NextRequest("https://app.test/inbox"));
+      expect(res.status).toBe(503);
+      expect(res.headers.get("x-middleware-next")).toBeNull();
+      expect(await res.text()).toContain(name);
+      expect(createServerClient).not.toHaveBeenCalled();
+    });
+
+    it("refuses protected APIs with a 503 JSON error", async () => {
+      const res = await middleware(new NextRequest("https://app.test/api/whatsapp/config"));
+      expect(res.status).toBe(503);
+      const body = await res.json();
+      expect(body.code).toBe("supabase_not_configured");
+      expect(body.detail).toContain(name);
+    });
+
+    it("still serves the public home page", async () => {
+      const res = await middleware(new NextRequest("https://app.test/"));
+      expect(res.headers.get("x-middleware-next")).toBe("1");
+    });
+
+    it("lets the login page render (it reports the same error itself)", async () => {
+      const res = await middleware(new NextRequest("https://app.test/login"));
+      expect(res.headers.get("x-middleware-next")).toBe("1");
+    });
+  });
+
+  it("keeps production error responses generic", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+    const page = await middleware(new NextRequest("https://app.test/dashboard"));
+    expect(page.status).toBe(503);
+    expect(await page.text()).not.toContain("NEXT_PUBLIC_SUPABASE_URL");
+    const api = await middleware(new NextRequest("https://app.test/api/whatsapp/config"));
+    const body = await api.json();
+    expect(body.detail).toBeUndefined();
+    expect(body.missing).toBeUndefined();
   });
 });

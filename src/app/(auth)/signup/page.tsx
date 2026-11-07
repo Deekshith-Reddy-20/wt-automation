@@ -16,7 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Sun, CheckCircle, UsersRound } from "lucide-react";
+import { Sprout, CheckCircle, UsersRound } from "lucide-react";
 
 // `useSearchParams` opts the component out of static prerendering
 // unless wrapped in Suspense — same pattern as /login.
@@ -161,7 +161,7 @@ function SignupPageInner() {
             {inviteToken ? (
               <UsersRound className="h-6 w-6 text-primary" />
             ) : (
-              <Sun className="h-6 w-6 text-primary" />
+              <Sprout className="h-6 w-6 text-primary" />
             )}
           </div>
           <CardTitle className="text-xl text-foreground">

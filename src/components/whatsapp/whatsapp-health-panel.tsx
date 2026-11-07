@@ -9,11 +9,13 @@ import { cn } from "@/lib/utils"
 import type { IntegrationHealthState } from "@/lib/whatsapp/integration-health"
 
 export interface HealthProbe {
+  provider?: "msg91"
+  integrated_number?: string | null
   health?: { state: IntegrationHealthState; reasons: string[] }
   errors?: string[]
   token?: { type: string | null; expires_at: number | null; is_valid: boolean } | null
   webhook?: {
-    app_secret: "ok" | "placeholder" | "missing"
+    app_secret?: "ok" | "placeholder" | "missing"
     since: string
     last_post: { at: string; outcome: string } | null
     last_accepted_at: string | null
@@ -100,6 +102,7 @@ export function WhatsAppHealthPanel() {
   const [probe, setProbe] = useState<HealthProbe | null>(null)
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [checkedAt, setCheckedAt] = useState<Date | null>(null)
 
   async function check() {
     setLoading(true)
@@ -111,6 +114,7 @@ export function WhatsAppHealthPanel() {
     } catch {
       setFailed(true)
     } finally {
+      setCheckedAt(new Date())
       setLoading(false)
     }
   }
@@ -122,10 +126,17 @@ export function WhatsAppHealthPanel() {
           <Activity className="size-4 text-primary" />
           {t("title")}
         </div>
-        <Button variant="outline" size="sm" onClick={check} disabled={loading}>
-          {loading && <Loader2 className="size-3.5 animate-spin" />}
-          {t("check")}
-        </Button>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            {checkedAt
+              ? t("lastChecked", { time: checkedAt.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }) })
+              : t("neverChecked")}
+          </span>
+          <Button variant="outline" size="sm" onClick={check} disabled={loading}>
+            {loading && <Loader2 className="size-3.5 animate-spin" />}
+            {t("check")}
+          </Button>
+        </div>
       </div>
       <div className="mt-3">
         {failed ? (

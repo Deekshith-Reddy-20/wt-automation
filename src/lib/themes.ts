@@ -14,7 +14,7 @@
  */
 
 export const THEME_IDS = [
-  "suraj",
+  "vfarms",
   "violet",
   "emerald",
   "cobalt",
@@ -24,7 +24,7 @@ export const THEME_IDS = [
 
 export type ThemeId = (typeof THEME_IDS)[number];
 
-export const DEFAULT_THEME: ThemeId = "suraj";
+export const DEFAULT_THEME: ThemeId = "vfarms";
 
 export const STORAGE_KEY = "wacrm.theme";
 
@@ -69,9 +69,9 @@ export interface ThemeMeta {
 
 export const THEMES: ReadonlyArray<ThemeMeta> = [
   {
-    id: "suraj",
-    name: "Suraj Solar",
-    tagline: "The brand default — editorial green on warm ivory, coral accents.",
+    id: "vfarms",
+    name: "V-Farms",
+    tagline: "The brand default — farm green on warm ivory, coral accents.",
     swatch: "#226129",
   },
   {

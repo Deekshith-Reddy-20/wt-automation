@@ -98,6 +98,32 @@ export function canViewOnly(role: AccountRole): boolean {
   return role === "viewer";
 }
 
+// ------------------------------------------------------------
+// V-Farms resort capabilities
+//
+//   owner / admin  → property information, pricing, policies,
+//                    integrations, refunds (the "resort admin")
+//   agent          → reservations: leads, bookings, calendar
+//                    blocks, inbox takeover (the "reservation
+//                    manager")
+//   viewer         → read-only
+// ------------------------------------------------------------
+
+/** Owner / admin: property details, pricing, policies, integrations. */
+export function canManageResortSettings(role: AccountRole): boolean {
+  return hasMinRole(role, "admin");
+}
+
+/** Owner / admin / agent: leads, bookings, calendar, inbox handoff. */
+export function canManageReservations(role: AccountRole): boolean {
+  return hasMinRole(role, "agent");
+}
+
+/** Owner / admin: initiate or record refunds. */
+export function canManageRefunds(role: AccountRole): boolean {
+  return hasMinRole(role, "admin");
+}
+
 /** Owner only: irreversible destructive operations. */
 export function canDeleteAccount(role: AccountRole): boolean {
   return role === "owner";

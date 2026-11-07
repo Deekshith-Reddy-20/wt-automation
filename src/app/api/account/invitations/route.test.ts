@@ -98,9 +98,9 @@ afterEach(() => {
 
 describe('POST /api/account/invitations — invite link host', () => {
   it('NEXT_PUBLIC_SITE_URL wins over request headers', async () => {
-    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://crm.surajsolar.example/')
+    vi.stubEnv('NEXT_PUBLIC_SITE_URL', 'https://crm.vfarms.example/')
     const res = await create({ role: 'agent' }, { host: 'other.example' })
-    expect((await res.json()).url).toMatch(/^https:\/\/crm\.surajsolar\.example\/join\//)
+    expect((await res.json()).url).toMatch(/^https:\/\/crm\.vfarms\.example\/join\//)
   })
 
   it('uses an allow-listed forwarded host', async () => {

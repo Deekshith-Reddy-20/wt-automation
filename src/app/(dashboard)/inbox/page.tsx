@@ -188,6 +188,14 @@ function InboxPageInner() {
 
       if (!user) return;
 
+      const msg91 = await fetch("/api/msg91/status", { cache: "no-store" })
+        .then((r) => (r.ok ? (r.json() as Promise<{ configured?: boolean }>) : null))
+        .catch(() => null);
+      if (msg91?.configured) {
+        setWhatsappConnected(true);
+        return;
+      }
+
       // whatsapp_config is one-row-per-account post-multi-user, so
       // the previous `.eq('user_id', user.id)` would miss the row
       // for any teammate who didn't personally save the config —

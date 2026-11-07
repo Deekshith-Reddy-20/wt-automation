@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { getSupabaseServiceConfig } from '@/lib/supabase/service-env'
 import { decrypt } from '@/lib/whatsapp/encryption'
 import { getMediaUrl } from '@/lib/whatsapp/meta-api'
 import { mirrorInboundMedia } from '@/lib/whatsapp/mirror-inbound-media'
@@ -29,6 +30,9 @@ import {
 } from '@/lib/flows/engine'
 import { engineSendText } from '@/lib/flows/meta-send'
 import { applyOptKeyword, loadOptedOutAt } from '@/lib/contacts/opt-out'
+import { dispatchInboundToResortBot } from '@/lib/resort/bot/runtime'
+import { recordConsent } from '@/lib/resort/leads'
+import { waIdToE164 } from '@/lib/resort/refs'
 import { dispatchInboundToAiReply } from '@/lib/ai/auto-reply'
 import { dispatchWebhookEvent } from '@/lib/webhooks/deliver'
 import {
@@ -71,10 +75,8 @@ import {
 let _adminClient: any = null
 function supabaseAdmin() {
   if (!_adminClient) {
-    _adminClient = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const { url, serviceRoleKey } = getSupabaseServiceConfig()
+    _adminClient = createClient(url, serviceRoleKey)
   }
   return _adminClient
 }
@@ -813,6 +815,17 @@ async function processMessage(
       text: interactiveReplyId ? null : inboundText,
     })
     automationBlocked = opt.optedOut || opt.change !== null
+    if (opt.change) {
+      await recordConsent(supabaseAdmin(), {
+        accountId,
+        contactId: contactRecord.id,
+        phoneE164: waIdToE164(contactRecord.phone ?? null),
+        consentType: 'service',
+        status: opt.change === 'opted_out' ? 'revoked' : 'granted',
+        source: opt.change === 'opted_out' ? 'stop_keyword' : 'start_keyword',
+        evidence: inboundText.slice(0, 100),
+      })
+    }
     if (opt.confirmation) {
       await engineSendText({
         accountId,
@@ -860,8 +873,32 @@ async function processMessage(
   // no active flows take the runner's early-exit "no_match" path
   // basically for free (one indexed SELECT for the active run).
   // ============================================================
-  const flowResult = automationBlocked
-    ? { consumed: false }
+  // V-Farms resort bot. When enabled for the account it owns the
+  // conversation ahead of the generic flow runner: a consumed message is
+  // treated exactly like a flow-consumed one (no content automations, no
+  // AI reply). Accounts without the resort bot get consumed=false.
+  const resortConsumed = automationBlocked
+    ? false
+    : (
+        await dispatchInboundToResortBot({
+          accountId,
+          userId: configOwnerUserId,
+          contactId: contactRecord.id,
+          conversationId: conversation.id,
+          contact: { phone: contactRecord.phone ?? null, name: contactRecord.name ?? null },
+          message: {
+            text: inboundText,
+            replyId: interactiveReplyId ?? null,
+            messageId: message.id,
+          },
+        }).catch((err) => {
+          console.error('[webhook] resort bot dispatch failed:', err)
+          return { consumed: false }
+        })
+      ).consumed
+
+  const flowResult = automationBlocked || resortConsumed
+    ? { consumed: resortConsumed }
     : await dispatchInboundToFlows({
         accountId,
         userId: configOwnerUserId,
@@ -1357,7 +1394,7 @@ async function contactFromContext(
   }
 }
 
-async function findOrCreateContact(
+export async function findOrCreateContact(
   accountId: string,
   configOwnerUserId: string,
   identity: WaIdentity
